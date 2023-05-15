@@ -1,0 +1,13 @@
+[package]
+name = "abex-feeder"
+version = "0.0.1"
+published-at = "0x4738f8ef615b1508a0a43f15bc0a1d57bc7552fd78e142ff6eb9b4fbc8c80092"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "sui-v1.0.0"
+
+[addresses]
+sui = "0x2"
+abex_feeder = "0x4738f8ef615b1508a0a43f15bc0a1d57bc7552fd78e142ff6eb9b4fbc8c80092"

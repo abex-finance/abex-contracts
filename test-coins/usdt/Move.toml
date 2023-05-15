@@ -1,0 +1,14 @@
+[package]
+name = "abex-usdt"
+version = "0.0.1"
+published-at = "0xd5e0c7339145eeb5322b4beca4a134496ebf6c5aed4b3b260614f655ac5ab65a"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "sui-v1.0.0"
+
+[addresses]
+abex_usdt = "0xd5e0c7339145eeb5322b4beca4a134496ebf6c5aed4b3b260614f655ac5ab65a"
+std = "0x1"
+sui = "0x2"

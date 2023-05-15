@@ -1,0 +1,15 @@
+[package]
+name = "Pyth"
+version = "0.0.1"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "sui-v1.0.0"
+
+[dependencies.Wormhole]
+local = "../wormhole"
+
+[addresses]
+pyth = "0x250"
+wormhole = "0x200"

@@ -1,0 +1,14 @@
+[package]
+name = "abex-eth"
+version = "0.0.1"
+published-at = "0x85a9ff4e8c1fa3392668f5687cf662b39c0ba7c57e2ed3a194ad3ac934a217d0"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "sui-v1.0.0"
+
+[addresses]
+abex_eth = "0x85a9ff4e8c1fa3392668f5687cf662b39c0ba7c57e2ed3a194ad3ac934a217d0"
+std = "0x1"
+sui = "0x2"
