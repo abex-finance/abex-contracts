@@ -11,7 +11,7 @@ cd abex-contracts
 
 Install Sui
 
-```
+```shell
 wget https://github.com/MystenLabs/sui/releases/download/sui-v1.0.0/sui
 chmod a+x sui
 mv sui ~/.cargo/bin

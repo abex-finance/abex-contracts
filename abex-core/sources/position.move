@@ -95,7 +95,7 @@ module abex_core::position {
         assert!(open_amount > 0, ERR_INVALID_OPEN_AMOUNT);
         assert!(
             balance::value(&collateral) * config.max_reserved_multiplier
-                <= balance::value(&reserved),
+                >= balance::value(&reserved),
             ERR_EXCEED_MAX_RESERVED,
         );
         // compute position size
