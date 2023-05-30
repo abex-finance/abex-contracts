@@ -7,7 +7,7 @@ read -p "Import the symbol direction (default: LONG): " direction
 read -p "Import max price interval in seconds (default: 90): " max_interval
 read -p "Import param multiplier (default: 25000000000000000): " param_multiplier
 read -p "Import param max (default: 5000000000000000): " param_max
-read -p "Import max laverage (default: 100): " max_laverage
+read -p "Import max leverage (default: 100): " max_leverage
 read -p "Import min holding duration seconds (default: 30): " min_duration
 read -p "Import max reserved multiplier (default: 10): " max_reserved
 read -p "Import min position size (default: 10000000000000000000): " min_size
@@ -38,8 +38,8 @@ fi
 if [ -z "${param_max}" ]; then
     param_max=5000000000000000
 fi
-if [ -z "${max_laverage}" ]; then
-       max_laverage=100
+if [ -z "${max_leverage}" ]; then
+       max_leverage=100
 fi
 if [ -z "${min_duration}" ]; then
        min_duration=30
@@ -84,7 +84,7 @@ add_log=`sui client --client.config $config \
                      ${native_feeder} \
                      ${param_multiplier} \
                      ${param_max} \
-                     ${max_laverage} \
+                     ${max_leverage} \
                      ${min_duration} \
                      ${max_reserved} \
                      ${min_size} \

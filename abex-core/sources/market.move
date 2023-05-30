@@ -302,7 +302,7 @@ module abex_core::market {
         feeder: &NativeFeeder,
         param_multiplier: u256,
         param_max: u128,
-        max_laverage: u64,
+        max_leverage: u64,
         min_holding_duration: u64,
         max_reserved_multiplier: u64,
         min_size: u256,
@@ -324,7 +324,7 @@ module abex_core::market {
             WrappedPositionConfig<I, D> {
                 id: object::new(ctx),
                 inner: position::new_position_config(
-                    max_laverage,
+                    max_leverage,
                     min_holding_duration,
                     max_reserved_multiplier,
                     min_size,

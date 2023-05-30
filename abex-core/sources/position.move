@@ -28,7 +28,7 @@ module abex_core::position {
     // === Storage ===
 
     struct PositionConfig has copy, drop, store {
-        max_laverage: u64,
+        max_leverage: u64,
         min_holding_duration: u64,
         max_reserved_multiplier: u64,
         min_size: Decimal,
@@ -59,7 +59,7 @@ module abex_core::position {
     }
 
     public(friend) fun new_position_config(
-        max_laverage: u64,
+        max_leverage: u64,
         min_holding_duration: u64,
         max_reserved_multiplier: u64,
         min_size: u256,
@@ -69,7 +69,7 @@ module abex_core::position {
         liquidation_bonus: u128,
     ): PositionConfig {
         PositionConfig {
-            max_laverage,
+            max_leverage,
             min_holding_duration,
             max_reserved_multiplier,
             min_size: decimal::from_raw(min_size),
@@ -642,7 +642,7 @@ module abex_core::position {
                 collateral_price,
                 balance::value(&position.collateral),
             ),
-            position.config.max_laverage,
+            position.config.max_leverage,
         );
         let latest_size = agg_price::coins_to_value(
             index_price,
@@ -677,7 +677,7 @@ module abex_core::position {
     #[test_only]
     fun default_position_config(): PositionConfig {
         PositionConfig {
-            max_laverage: 100,
+            max_leverage: 100,
             min_holding_duration: 30, // 30 seconds
             max_reserved_multiplier: 10, // 10
             min_size: decimal::from_u64(10), // 10 USD
