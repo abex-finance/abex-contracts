@@ -28,6 +28,7 @@ module abex_core::market {
     use abex_core::pool::{
         Self, Vault, Symbol,
         OpenPositionEvent, PledgeInPositionEvent,
+        DecreaseReservedFromPositionEvent,
         RedeemFromPositionEvent, DecreasePositionEvent,
         ClosePositionEvent, LiquidatePositionEvent,
     };
@@ -110,6 +111,28 @@ module abex_core::market {
         vaults_parent_id: ID,
         symbols_parent_id: ID,
         positions_parent_id: ID,
+    }
+
+    struct Deposit<phantom C> has copy, drop {
+        minter: address,
+        price: Decimal,
+        deposit_amount: u64,
+        mint_amount: u64,
+    }
+
+    struct Withdraw<phantom C> has copy, drop {
+        burner: address,
+        price: Decimal,
+        withdraw_amount: u64,
+        burn_amount: u64,
+    }
+
+    struct Swap<phantom I, phantom D> has copy, drop {
+        swapper: address,
+        source_price: Decimal,
+        dest_price: Decimal,
+        source_amount: u64,
+        dest_amount: u64,
     }
 
     struct PositionUpdated<
@@ -500,13 +523,19 @@ module abex_core::market {
             position_name,
         );
 
-        pool::decrease_reserved_from_position(
+        let event = pool::decrease_reserved_from_position(
             vault,
             position,
             reserving_fee_model,
             decrease_amount,
             timestamp,
         );
+
+        // emit decrease reserved from position
+        event::emit(PositionUpdated<C, I, D, DecreaseReservedFromPositionEvent> {
+            position_name,
+            event,
+        });
     }
 
     public entry fun pledge_in_position<L, C, I, D>(
@@ -898,6 +927,7 @@ module abex_core::market {
             long,
             lp_supply_amount,
             timestamp,
+            liquidator,
         );
 
         if (balance::value(&liquidation_fee) > 0) {
@@ -1385,6 +1415,7 @@ module abex_core::market {
         );
 
         let minter = tx_context::sender(ctx);
+        let deposit_amount = coin::value(&deposit);
         let lp_supply_amount = balance::supply_value(&market.lp_supply);
         let (
             handled_vaults,
@@ -1428,6 +1459,14 @@ module abex_core::market {
         // mint to sender
         let minted = mint_lp(market, mint_amount);
         pay_from_balance(minted, minter, ctx);
+
+        // emit deposit
+        event::emit(Deposit<C> {
+            minter,
+            price: agg_price::price_of(&price),
+            deposit_amount,
+            mint_amount,
+        });
     }
 
     public fun withdraw<L, C>(
@@ -1482,8 +1521,17 @@ module abex_core::market {
             total_vaults_value,
             total_weight,
         );
-        assert!(balance::value(&withdraw) >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
+        let withdraw_amount = balance::value(&withdraw);
+        assert!(withdraw_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
         pay_from_balance(withdraw, burner, ctx);
+
+        // emit withdraw
+        event::emit(Withdraw<C> {
+            burner,
+            price: agg_price::price_of(&price),
+            withdraw_amount,
+            burn_amount,
+        });
     }
 
     public fun swap<L, S, D>(
@@ -1503,6 +1551,7 @@ module abex_core::market {
             ERR_SWAPPING_SAME_COINS,
         );
         let swapper = tx_context::sender(ctx);
+        let source_amount = coin::value(&source);
         let (handled_vaults, total_weight, total_vaults_value) =
             finalize_vaults_valuation(vaults_valuation);
         let (_, VaultInfo { price: source_price, value: source_vault_value }) =
@@ -1531,8 +1580,18 @@ module abex_core::market {
             total_vaults_value,
             total_weight,
         );
-        assert!(balance::value(&receiving) >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
+        let dest_amount = balance::value(&receiving);
+        assert!(dest_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
         pay_from_balance(receiving, swapper, ctx);
+
+        // emit swap
+        event::emit(Swap<S, D> {
+            swapper,
+            source_price: agg_price::price_of(&source_price),
+            dest_price: agg_price::price_of(&dest_price),
+            source_amount,
+            dest_amount,
+        });
     }
 
     public fun create_vaults_valuation<L>(

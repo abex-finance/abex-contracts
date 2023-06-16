@@ -48,16 +48,17 @@ module abex_core::pool {
         acc_funding_rate: SRate,
     }
 
-    // === Events ===
+    // === Position Events ===
 
     struct OpenPositionEvent has copy, drop {
         timestamp: u64,
+        position_config: PositionConfig,
         collateral_price: Decimal,
         index_price: Decimal,
         open_amount: u64,
         open_fee_value: Decimal,
-        collateral_amount: u64,
         reserved_amount: u64,
+        collateral_amount: u64,
     }
 
     struct DecreaseReservedFromPositionEvent has copy, drop {
@@ -100,6 +101,7 @@ module abex_core::pool {
 
     struct LiquidatePositionEvent has copy, drop {
         timestamp: u64,
+        liquidator: address,
         collateral_price: Decimal,
         index_price: Decimal,
         reserving_fee_value: Decimal,
@@ -246,7 +248,6 @@ module abex_core::pool {
         deposit_value
     }
 
-    // TODO: add event here
     public(friend) fun withdraw<C>(
         vault: &mut Vault<C>,
         fee_model: &RebaseFeeModel,
@@ -318,7 +319,6 @@ module abex_core::pool {
         )
     }
 
-    // TODO: add event here
     public(friend) fun swap_dest<D>(
         dest_vault: &mut Vault<D>,
         model: &RebaseFeeModel,
@@ -435,25 +435,25 @@ module abex_core::pool {
         // create event
         let event = OpenPositionEvent {
             timestamp,
+            position_config,
             collateral_price: agg_price::price_of(collateral_price),
             index_price: agg_price::price_of(index_price),
             open_amount,
             open_fee_value,
-            collateral_amount: position::collateral_amount(&position),
             reserved_amount,
+            collateral_amount: position::collateral_amount(&position),
         };
 
         (position, event)
     }
 
-    // TODO: add event here
     public(friend) fun decrease_reserved_from_position<C>(
         vault: &mut Vault<C>,
         position: &mut Position<C>,
         reserving_fee_model: &ReservingFeeModel,
         decrease_amount: u64,
         timestamp: u64,
-    ) {
+    ): DecreaseReservedFromPositionEvent {
         assert!(
             object::id(reserving_fee_model) == vault.reserving_fee_model,
             ERR_MISMATCHED_RESERVING_FEE_MODEL,
@@ -472,6 +472,11 @@ module abex_core::pool {
         // update vault
         vault.reserved_amount = vault.reserved_amount - balance::value(&decreased_reserved);
         let _ = balance::join(&mut vault.liquidity, decreased_reserved);
+
+        DecreaseReservedFromPositionEvent {
+            timestamp,
+            decrease_amount,
+        }
     }
 
     public(friend) fun pledge_in_position<C>(
@@ -761,6 +766,7 @@ module abex_core::pool {
         long: bool,
         lp_supply_amount: Decimal,
         timestamp: u64,
+        liquidator: address,
     ): (Balance<C>, LiquidatePositionEvent) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(symbol.liquidate_enabled, ERR_LIQUIDATE_DISABLED);
@@ -838,6 +844,7 @@ module abex_core::pool {
 
         let event = LiquidatePositionEvent {
             timestamp,
+            liquidator,
             collateral_price: agg_price::price_of(collateral_price),
             index_price: agg_price::price_of(index_price),
             reserving_fee_value,
