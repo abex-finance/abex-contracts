@@ -13,7 +13,6 @@ module abex_core::market {
     use sui::balance::{Self, Balance, Supply};
     use sui::coin::{Self, Coin, CoinMetadata};
 
-    use pyth::state::{State as PythState};
     use pyth::price_info::{PriceInfoObject as PythFeeder};
 
     use abex_core::admin::AdminCap;
@@ -295,6 +294,7 @@ module abex_core::market {
         _a: &AdminCap,
         market: &mut Market<L>,
         weight: u256,
+        max_interval: u64,
         max_price_confidence: u64,
         coin_metadata: &CoinMetadata<C>,
         feeder: &PythFeeder,
@@ -308,6 +308,7 @@ module abex_core::market {
             weight,
             model_id,
             agg_price::new_agg_price_config(
+                max_interval,
                 max_price_confidence,
                 coin_metadata,
                 feeder,
@@ -320,6 +321,7 @@ module abex_core::market {
         _a: &AdminCap,
         market: &mut Market<L>,
         max_interval: u64,
+        max_price_confidence: u64,
         coin_metadata: &CoinMetadata<I>,
         feeder: &PythFeeder,
         param_multiplier: u256,
@@ -362,6 +364,7 @@ module abex_core::market {
             model_id,
             agg_price::new_agg_price_config(
                 max_interval,
+                max_price_confidence,
                 coin_metadata,
                 feeder,
             ),
@@ -399,7 +402,6 @@ module abex_core::market {
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
         position_config: &WrappedPositionConfig<C, D>,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         pledge: Coin<C>,
         open_amount: u64,
@@ -413,7 +415,6 @@ module abex_core::market {
             reserving_fee_model,
             funding_fee_model,
             position_config,
-            pyth_state,
             feeder,
             feeder,
             pledge,
@@ -430,7 +431,6 @@ module abex_core::market {
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
         position_config: &WrappedPositionConfig<I, D>,
-        pyth_state: &PythState,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         pledge: Coin<C>,
@@ -455,13 +455,11 @@ module abex_core::market {
 
         let collateral_price = agg_price::parse_pyth_feeder(
             pool::vault_price_config(vault),
-            pyth_state,
             collateral_feeder,
             timestamp,
         );
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
-            pyth_state,
             index_feeder,
             timestamp,
         );
@@ -580,7 +578,6 @@ module abex_core::market {
         position_cap: &PositionCap<C, C, D>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         redeem_amount: u64,
         price_threshold: u256,
@@ -592,7 +589,6 @@ module abex_core::market {
             position_cap,
             reserving_fee_model,
             funding_fee_model,
-            pyth_state,
             feeder,
             feeder,
             redeem_amount,
@@ -607,7 +603,6 @@ module abex_core::market {
         position_cap: &PositionCap<C, I, D>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         redeem_amount: u64,
@@ -639,13 +634,11 @@ module abex_core::market {
 
         let collateral_price = agg_price::parse_pyth_feeder(
             pool::vault_price_config(vault),
-            pyth_state,
             collateral_feeder,
             timestamp,
         );
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
-            pyth_state,
             index_feeder,
             timestamp,
         );
@@ -684,7 +677,6 @@ module abex_core::market {
         position_cap: &PositionCap<C, C, D>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         decreased_amount: u64,
         price_threshold: u256,
@@ -696,7 +688,6 @@ module abex_core::market {
             position_cap,
             reserving_fee_model,
             funding_fee_model,
-            pyth_state,
             feeder,
             feeder,
             decreased_amount,
@@ -711,7 +702,6 @@ module abex_core::market {
         position_cap: &PositionCap<C, I, D>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         decreased_amount: u64,
@@ -734,13 +724,11 @@ module abex_core::market {
 
         let collateral_price = agg_price::parse_pyth_feeder(
             pool::vault_price_config(vault),
-            pyth_state,
             collateral_feeder,
             timestamp,
         );
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
-            pyth_state,
             index_feeder,
             timestamp,
         );
@@ -783,7 +771,6 @@ module abex_core::market {
         position_cap: PositionCap<C, C, D>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         price_threshold: u256,
         ctx: &mut TxContext,
@@ -794,7 +781,6 @@ module abex_core::market {
             position_cap,
             reserving_fee_model,
             funding_fee_model,
-            pyth_state,
             feeder,
             feeder,
             price_threshold,
@@ -808,7 +794,6 @@ module abex_core::market {
         position_cap: PositionCap<C, I, D>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         index_price_threshold: u256,
@@ -834,13 +819,11 @@ module abex_core::market {
 
         let collateral_price = agg_price::parse_pyth_feeder(
             pool::vault_price_config(vault),
-            pyth_state,
             collateral_feeder,
             timestamp,
         );
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
-            pyth_state,
             index_feeder,
             timestamp,
         );
@@ -881,7 +864,6 @@ module abex_core::market {
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         owner: address,
         position_id: address,
@@ -892,7 +874,6 @@ module abex_core::market {
             market,
             reserving_fee_model,
             funding_fee_model,
-            pyth_state,
             feeder,
             feeder,
             owner,
@@ -906,7 +887,6 @@ module abex_core::market {
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         owner: address,
@@ -929,13 +909,11 @@ module abex_core::market {
 
         let collateral_price = agg_price::parse_pyth_feeder(
             pool::vault_price_config(vault),
-            pyth_state,
             collateral_feeder,
             timestamp,
         );
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
-            pyth_state,
             index_feeder,
             timestamp,
         );
@@ -1647,7 +1625,6 @@ module abex_core::market {
     public fun valuate_vault<L, C>(
         market: &mut Market<L>,
         model: &ReservingFeeModel,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         vaults_valuation: &mut VaultsValuation,
     ) {
@@ -1662,7 +1639,6 @@ module abex_core::market {
 
         let price = agg_price::parse_pyth_feeder(
             pool::vault_price_config(vault),
-            pyth_state,
             feeder,
             timestamp,
         );
@@ -1684,7 +1660,6 @@ module abex_core::market {
     public fun valuate_symbol<L, I, D>(
         market: &mut Market<L>,
         funding_fee_model: &FundingFeeModel,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         valuation: &mut SymbolsValuation,
     ) {
@@ -1700,7 +1675,6 @@ module abex_core::market {
 
         let price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
-            pyth_state,
             feeder,
             timestamp,
         );

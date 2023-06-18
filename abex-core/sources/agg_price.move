@@ -1,6 +1,6 @@
 
 module abex_core::agg_price {
-    use sui::math::{pow, diff};
+    use sui::math::pow;
     use sui::object::{Self, ID};
     use sui::coin::{Self, CoinMetadata};
 
@@ -8,7 +8,6 @@ module abex_core::agg_price {
     use pyth::i64::{Self as pyth_i64};
     use pyth::price::{Self as pyth_price};
     use pyth::price_info::{PriceInfoObject as PythFeeder};
-    use pyth::state::{State as PythState, get_stale_price_threshold_secs};
 
     use abex_core::decimal::{Self, Decimal};
 
@@ -20,6 +19,7 @@ module abex_core::agg_price {
     }
 
     struct AggPriceConfig has store {
+        max_interval: u64,
         max_confidence: u64,
         precision: u64,
         feeder: ID,
@@ -30,11 +30,13 @@ module abex_core::agg_price {
     const ERR_EXCEED_PRICE_CONFIDENCE: u64 = 2;
 
     public(friend) fun new_agg_price_config<T>(
+        max_interval: u64,
         max_confidence: u64,
         coin_metadata: &CoinMetadata<T>,
         feeder: &PythFeeder,
     ): AggPriceConfig {
         AggPriceConfig {
+            max_interval,
             max_confidence,
             precision: pow(10, coin::get_decimals(coin_metadata)),
             feeder: object::id(feeder),
@@ -43,7 +45,6 @@ module abex_core::agg_price {
 
     public fun parse_pyth_feeder(
         config: &AggPriceConfig,
-        pyth_state: &PythState,
         feeder: &PythFeeder,
         timestamp: u64,
     ): AggPrice {
@@ -51,12 +52,11 @@ module abex_core::agg_price {
 
         let price = get_price_unsafe(feeder);
         assert!(
-            diff(timestamp, pyth_price::get_timestamp(&price))
-                < get_stale_price_threshold_secs(pyth_state),
+            pyth_price::get_timestamp(&price) + config.max_interval >= timestamp,
             ERR_PRICE_STALED,
         );
         assert!(
-            pyth_price::get_conf(&price) < config.max_confidence,
+            pyth_price::get_conf(&price) <= config.max_confidence,
             ERR_EXCEED_PRICE_CONFIDENCE,
         );
 

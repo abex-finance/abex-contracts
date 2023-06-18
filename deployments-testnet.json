@@ -94,16 +94,16 @@
       }
     }
   },
-  "abex_feeder": {
-    "package": "0x4738f8ef615b1508a0a43f15bc0a1d57bc7552fd78e142ff6eb9b4fbc8c80092",
-    "upgrade_cap": "0xeec0231a84c8cd5de99f60ed920883e2a8537a2d812a6c06e1846c2b382c85a9",
+  "pyth_feeder": {
+    "package": "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44",
+    "state": "0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a",
     "feeder": {
-      "fsui": "0x77666c91121260120a6979c9e536b01bd3cb6118e1b8e8e084dd272070ae0e1f",
-      "btc": "0xcf04082937c5e07fe031698772b3bc4e0b2dea6c4b2e3d439ff5d7b5c5e04ff0",
-      "eth": "0x79b4815c885c625d2b251c32a257de410faec94a9fe1a615bdaede65e259a8c1",
-      "usdt": "0x4a3cdedaca564e81b674d120049027636105449e4099e04d562039067ce78e4c",
-      "pepe": "0x95b2b62f1bb3de14f11c34aeb6721e900eb9a9aed06891401fa6a253139be703",
-      "doge": "0xdcd211bbe06679d54714ccf1790c40d6fad9dbd05d448a773598c56a6b747068"
+      "fsui": "0x0",
+      "btc": "0x0",
+      "eth": "0x0",
+      "usdt": "0x0",
+      "pepe": "0x0",
+      "doge": "0x0"
     }
   },
   "coins": {
