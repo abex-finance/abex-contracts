@@ -1,15 +1,14 @@
 
 module abex_core::agg_price {
-    use sui::math::pow;
+    use sui::math::{pow, diff};
     use sui::object::{Self, ID};
     use sui::coin::{Self, CoinMetadata};
 
-    // use switchboard_std::math::Self as switchboard_math;
-    // use switchboard_std::aggregator::{
-    //     Self as switchboard_feeder, Aggregator as SwitchboardFeeder,
-    // };
-
-    use abex_feeder::native_feeder::{Self, NativeFeeder};
+    use pyth::pyth::get_price_unsafe;
+    use pyth::i64::{Self as pyth_i64};
+    use pyth::price::{Self as pyth_price};
+    use pyth::price_info::{PriceInfoObject as PythFeeder};
+    use pyth::state::{State as PythState, get_stale_price_threshold_secs};
 
     use abex_core::decimal::{Self, Decimal};
 
@@ -21,76 +20,61 @@ module abex_core::agg_price {
     }
 
     struct AggPriceConfig has store {
-        max_interval: u64,
+        max_confidence: u64,
         precision: u64,
         feeder: ID,
     }
 
-    const ERR_INVALID_FEEDER_ADDRESS: u64 = 0;
-    const ERR_FEEDER_INACTIVE: u64 = 1;
-    const ERR_PRICE_EXPIRED: u64 = 2;
-    const ERR_NEGATIVE_PRICE: u64 = 3;
+    const ERR_INVALID_PRICE_FEEDER: u64 = 0;
+    const ERR_PRICE_STALED: u64 = 1;
+    const ERR_EXCEED_PRICE_CONFIDENCE: u64 = 2;
 
     public(friend) fun new_agg_price_config<T>(
-        max_interval: u64,
+        max_confidence: u64,
         coin_metadata: &CoinMetadata<T>,
-        feeder: &NativeFeeder,
+        feeder: &PythFeeder,
     ): AggPriceConfig {
         AggPriceConfig {
-            max_interval,
+            max_confidence,
             precision: pow(10, coin::get_decimals(coin_metadata)),
             feeder: object::id(feeder),
         }
     }
 
-    public fun parse_native_feeder(
+    public fun parse_pyth_feeder(
         config: &AggPriceConfig,
-        feeder: &NativeFeeder,
+        pyth_state: &PythState,
+        feeder: &PythFeeder,
         timestamp: u64,
     ): AggPrice {
+        assert!(object::id(feeder) == config.feeder, ERR_INVALID_PRICE_FEEDER);
+
+        let price = get_price_unsafe(feeder);
         assert!(
-            config.feeder == object::id(feeder),
-            ERR_INVALID_FEEDER_ADDRESS,
+            diff(timestamp, pyth_price::get_timestamp(&price))
+                < get_stale_price_threshold_secs(pyth_state),
+            ERR_PRICE_STALED,
         );
-        assert!(native_feeder::enabled(feeder), ERR_FEEDER_INACTIVE);
-
-        let last_timestamp = native_feeder::last_update(feeder);
         assert!(
-            last_timestamp + config.max_interval >= timestamp,
-            ERR_PRICE_EXPIRED,
+            pyth_price::get_conf(&price) < config.max_confidence,
+            ERR_EXCEED_PRICE_CONFIDENCE,
         );
 
-        let (exp, value) = native_feeder::value(feeder);
+        let value = pyth_price::get_price(&price);
+        // price can not be negative
+        let value = pyth_i64::get_magnitude_if_positive(&value);
 
-        AggPrice {
-            price: decimal::div_by_u64(decimal::from_u128(value), pow(10, exp)),
-            precision: config.precision,
-        }
+        let exp = pyth_price::get_expo(&price);
+        let price = if (pyth_i64::get_is_negative(&exp)) {
+            let exp = pyth_i64::get_magnitude_if_negative(&exp);
+            decimal::mul_with_u64(decimal::from_u64(value), pow(10, (exp as u8)))
+        } else {
+            let exp = pyth_i64::get_magnitude_if_positive(&exp);
+            decimal::div_by_u64(decimal::from_u64(value), pow(10, (exp as u8)))
+        };
+
+        AggPrice { price, precision: config.precision}
     }
-
-    // public fun parse_switchboard_feeder(
-    //     config: &AggPriceConfig,
-    //     feeder: &SwitchboardFeeder,
-    //     timestamp: u64,
-    // ): AggPrice {
-    //     assert!(
-    //         config.feeder == object::id(feeder),
-    //         ERR_INVALID_FEEDER_ADDRESS,
-    //     );
-
-    //     let (value, last_timestamp) = switchboard_feeder::latest_value(feeder);
-    //     assert!(
-    //         last_timestamp + config.max_interval >= timestamp,
-    //         ERR_PRICE_EXPIRED,
-    //     );
-    //     let (val, exp, neg) = switchboard_math::unpack(value);
-    //     assert!(!neg, ERR_NEGATIVE_PRICE);
-
-    //     AggPrice {
-    //         price: decimal::div_by_u64(decimal::from_u128(val), pow(10, exp)),
-    //         precision: config.precision,
-    //     }
-    // }
 
     public fun price_of(self: &AggPrice): Decimal {
         self.price
