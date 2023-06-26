@@ -96,7 +96,6 @@
   },
   "pyth_feeder": {
     "package": "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44",
-    "state": "0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a",
     "feeder": {
       "fsui": "0x0",
       "btc": "0x0",

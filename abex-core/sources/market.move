@@ -182,30 +182,6 @@ module abex_core::market {
         transfer::public_transfer(coin::from_balance(balance, ctx), receiver)
     }
 
-    fun check_index_price(
-        index_price: &AggPrice,
-        long: bool,
-        price_threshold: Decimal,
-    ) {
-        if (long) {
-            assert!(
-                decimal::le(
-                    &agg_price::price_of(index_price),
-                    &price_threshold,
-                ),
-                ERR_INDEX_PRICE_EXCEED_THRESHOLD,
-            );
-        } else {
-            assert!(
-                decimal::ge(
-                    &agg_price::price_of(index_price),
-                    &price_threshold,
-                ),
-                ERR_INDEX_PRICE_EXCEED_THRESHOLD,
-            );
-        }
-    }
-
     fun finalize_vaults_valuation(
         valuation: VaultsValuation,
     ): (VecMap<TypeName, VaultInfo>, Decimal, Decimal) {
@@ -406,7 +382,8 @@ module abex_core::market {
         pledge: Coin<C>,
         open_amount: u64,
         reserved_amount: u64,
-        price_threshold: u256,
+        collateral_price_threshold: u256,
+        index_price_threshold: u256,
         ctx: &mut TxContext,
     ) {
         open_position_2<L, C, C, D>(
@@ -420,7 +397,8 @@ module abex_core::market {
             pledge,
             open_amount,
             reserved_amount,
-            price_threshold,
+            collateral_price_threshold,
+            index_price_threshold,
             ctx,
         )
     }
@@ -436,6 +414,7 @@ module abex_core::market {
         pledge: Coin<C>,
         open_amount: u64,
         reserved_amount: u64,
+        collateral_price_threshold: u256,
         index_price_threshold: u256,
         ctx: &mut TxContext,
     ) {
@@ -458,16 +437,33 @@ module abex_core::market {
             collateral_feeder,
             timestamp,
         );
+        {
+            let price_threshold = decimal::from_raw(collateral_price_threshold);
+            assert!(
+                decimal::ge(&agg_price::price_of(&collateral_price), &price_threshold),
+                ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD,
+            );
+        };
+
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
         );
-        check_index_price(
-            &index_price,
-            long,
-            decimal::from_raw(index_price_threshold),
-        );
+        {
+            let price_threshold = decimal::from_raw(index_price_threshold);
+            if (long) {
+                assert!(
+                    decimal::le(&agg_price::price_of(&index_price), &price_threshold),
+                    ERR_INDEX_PRICE_EXCEED_THRESHOLD,
+                );
+            } else {
+                assert!(
+                    decimal::ge(&agg_price::price_of(&index_price), &price_threshold),
+                    ERR_INDEX_PRICE_EXCEED_THRESHOLD,
+                );
+            }
+        };
 
         let position_id = object::new(ctx);
         let position_name = PositionName<C, I, D> {
@@ -580,7 +576,6 @@ module abex_core::market {
         funding_fee_model: &FundingFeeModel,
         feeder: &PythFeeder,
         redeem_amount: u64,
-        price_threshold: u256,
         ctx: &mut TxContext,
     ) {
         redeem_from_position_2(
@@ -592,7 +587,6 @@ module abex_core::market {
             feeder,
             feeder,
             redeem_amount,
-            price_threshold,
             ctx,
         )
     }
@@ -606,7 +600,6 @@ module abex_core::market {
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         redeem_amount: u64,
-        index_price_threshold: u256,
         ctx: &mut TxContext,
     ) {
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -642,11 +635,6 @@ module abex_core::market {
             index_feeder,
             timestamp,
         );
-        check_index_price(
-            &index_price,
-            long,
-            decimal::from_raw(index_price_threshold),
-        );
 
         let (redeem, event) = pool::redeem_from_position(
             vault,
@@ -679,7 +667,6 @@ module abex_core::market {
         funding_fee_model: &FundingFeeModel,
         feeder: &PythFeeder,
         decreased_amount: u64,
-        price_threshold: u256,
         ctx: &mut TxContext,
     ) {
         decrease_position_2(
@@ -691,7 +678,6 @@ module abex_core::market {
             feeder,
             feeder,
             decreased_amount,
-            price_threshold,
             ctx,
         )
     }
@@ -705,7 +691,6 @@ module abex_core::market {
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         decreased_amount: u64,
-        index_price_threshold: u256,
         ctx: &mut TxContext,
     ) {
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -731,11 +716,6 @@ module abex_core::market {
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
-        );
-        check_index_price(
-            &index_price,
-            long,
-            decimal::from_raw(index_price_threshold),
         );
 
         let (profit, event) = pool::decrease_position(
@@ -772,7 +752,6 @@ module abex_core::market {
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
         feeder: &PythFeeder,
-        price_threshold: u256,
         ctx: &mut TxContext,
     ) {
         close_position_2(
@@ -783,7 +762,6 @@ module abex_core::market {
             funding_fee_model,
             feeder,
             feeder,
-            price_threshold,
             ctx,
         )
     }
@@ -796,7 +774,6 @@ module abex_core::market {
         funding_fee_model: &FundingFeeModel,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
-        index_price_threshold: u256,
         ctx: &mut TxContext,
     ) {
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -826,11 +803,6 @@ module abex_core::market {
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
-        );
-        check_index_price(
-            &index_price,
-            long,
-            decimal::from_raw(index_price_threshold),
         );
 
         let (profit, event) = pool::close_position(
@@ -1552,6 +1524,7 @@ module abex_core::market {
             type_name::get<S>() != type_name::get<D>(),
             ERR_SWAPPING_SAME_COINS,
         );
+
         let swapper = tx_context::sender(ctx);
         let source_amount = coin::value(&source);
         let (handled_vaults, total_weight, total_vaults_value) =
