@@ -12,9 +12,17 @@ fi
 deployments="../../deployments-$env_name.json"
 config="/root/.sui/sui_config/$env_name-client.yaml"
 
+pyth=`cat $deployments | jq -r ".pyth_feeder.package"`
+wormhole=`cat $deployments | jq -r ".pyth_feeder.wormhole.package"`
+
 # update Move.toml
-feeder=`sed -n 's/abex_feeder\s*=\s*\("0x[0-9a-fA-F]\+"\)/\1/p' ../../abex-feeder/Move.toml`
-sed -i "s/\(abex_feeder\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1$feeder/" ../Move.toml
+sed -i "s/\(published-at\s*=\s*\)"0x[0-9a-fA-F]\+"/\1\"$wormhole\"/" ../vendor/wormhole/Move.toml
+sed -i "s/\(wormhole\s*=\s*\)"0x[0-9a-fA-F]\+"/\1\"$wormhole\"/" ../vendor/wormhole/Move.toml
+sed -i "s/\(wormhole\s*=\s*\)"0x[0-9a-fA-F]\+"/\1\"$wormhole\"/" ../vendor/pyth/Move.toml
+sed -i "s/\(published-at\s*=\s*\)"0x[0-9a-fA-F]\+"/\1\"$pyth\"/" ../vendor/pyth/Move.toml
+sed -i "s/\(pyth\s*=\s*\)"0x[0-9a-fA-F]\+"/\1\"$pyth\"/" ../vendor/pyth/Move.toml
+sed -i "s/\(pyth\s*=\s*\)"0x[0-9a-fA-F]\+"/\1\"$pyth\"/" ../Move.toml
+sed -i 's/\(published-at\s*=\s*\)"0x[0-9a-fA-F]\+"/\1"0x0"/' ../Move.toml
 sed -i 's/\(abex_core\s*=\s*\)"0x[0-9a-fA-F]\+"/\1"0x0"/' ../Move.toml
 
 # deploy
