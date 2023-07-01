@@ -12,18 +12,22 @@ module abex_core::position {
     friend abex_core::pool;
     friend abex_core::market;
 
-    const ERR_INVALID_PLEDGE: u64 = 0;
-    const ERR_INVALID_REDEEM_AMOUNT: u64 = 1;
-    const ERR_INVALID_OPEN_AMOUNT: u64 = 2;
-    const ERR_INVALID_DECREASE_AMOUNT: u64 = 3;
-    const ERR_INSUFFICIENT_COLLATERAL: u64 = 4;
-    const ERR_INSUFFICIENT_RESERVED: u64 = 5;
-    const ERR_POSITION_SIZE_TOO_LESS: u64 = 6;
-    const ERR_HOLDING_DURATION_TOO_SHORT: u64 = 7;
-    const ERR_LEVERAGE_TOO_LARGE: u64 = 8;
-    const ERR_LIQUIDATION_TRIGGERED: u64 = 9;
-    const ERR_LIQUIDATION_NOT_TRIGGERED: u64 = 10;
-    const ERR_EXCEED_MAX_RESERVED: u64 = 11;
+    const ERR_POSITION_LOCKED: u64 = 0;
+    const ERR_INVALID_PLEDGE: u64 = 1;
+    const ERR_INVALID_REDEEM_AMOUNT: u64 = 2;
+    const ERR_INVALID_OPEN_AMOUNT: u64 = 3;
+    const ERR_INVALID_DECREASE_AMOUNT: u64 = 4;
+    const ERR_INSUFFICIENT_COLLATERAL: u64 = 5;
+    const ERR_INSUFFICIENT_RESERVED: u64 = 6;
+    const ERR_POSITION_SIZE_TOO_LESS: u64 = 7;
+    const ERR_HOLDING_DURATION_TOO_SHORT: u64 = 8;
+    const ERR_LEVERAGE_TOO_LARGE: u64 = 9;
+    const ERR_LIQUIDATION_TRIGGERED: u64 = 10;
+    const ERR_LIQUIDATION_NOT_TRIGGERED: u64 = 11;
+    const ERR_EXCEED_MAX_RESERVED: u64 = 12;
+    const ERR_INVALID_LIMITED_INDEX_PRICE: u64 = 13;
+    const ERR_INVALID_PROFIT_THRESHOLD: u64 = 14;
+    const ERR_INVALID_LOSS_THRESHOLD: u64 = 15;
 
     // === Storage ===
 
@@ -46,6 +50,7 @@ module abex_core::position {
     }
 
     struct Position<phantom C> has store {
+        locked: bool,
         config: PositionConfig,
         open_timestamp: u64,
         position_amount: u64,
@@ -81,7 +86,7 @@ module abex_core::position {
     }
 
     public(friend) fun open_position<C>(
-        config: PositionConfig,
+        config: &PositionConfig,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
         reserved: Balance<C>,
@@ -118,7 +123,8 @@ module abex_core::position {
 
         // create position
         let position = Position {
-            config,
+            locked: false,
+            config: *config,
             open_timestamp: timestamp,
             position_amount: open_amount,
             position_size: open_size,
@@ -135,6 +141,10 @@ module abex_core::position {
         assert!(ok, ERR_LEVERAGE_TOO_LARGE);
 
         (position, open_fee, open_fee_value)
+    }
+
+    public(friend) fun unlock_position<C>(position: &mut Position<C>) {
+        position.locked = false;
     }
 
     public(friend) fun decrease_reserved_from_position<C>(
@@ -173,6 +183,7 @@ module abex_core::position {
         funding_rate: SRate,
         timestamp: u64,
     ): Balance<C> {
+        assert!(!position.locked, ERR_POSITION_LOCKED);
         assert!(
             redeem_amount > 0
                 && redeem_amount < balance::value(&position.collateral),
@@ -227,6 +238,7 @@ module abex_core::position {
         Balance<C>,
         Balance<C>,
     ) {
+        assert!(!position.locked, ERR_POSITION_LOCKED);
         assert!(
             decrease_amount > 0 && decrease_amount < position.position_amount,
             ERR_INVALID_DECREASE_AMOUNT,
@@ -364,6 +376,8 @@ module abex_core::position {
         Balance<C>,
         Balance<C>,
     ) {
+        assert!(!position.locked, ERR_POSITION_LOCKED);
+
         // compute delta size
         let delta_size = compute_delta_size(&position, index_price, long);
 
@@ -379,6 +393,7 @@ module abex_core::position {
 
         // unwrap position
         let Position {
+            locked: _,
             config,
             open_timestamp: _,
             position_amount,
@@ -499,6 +514,7 @@ module abex_core::position {
 
         // unwrap position
         let Position {
+            locked: _,
             config,
             open_timestamp: _,
             position_amount,
@@ -547,7 +563,175 @@ module abex_core::position {
 
     // }
 
-    //////////////////////////// public read functions ////////////////////////////
+    public(friend) fun handle_create_open_position_order(
+        position_config: &PositionConfig,
+        latest_index_price: &AggPrice,
+        limited_index_price: &AggPrice,
+        long: bool,
+        reserved_amount: u64,
+        collateral_amount: u64,
+        open_amount: u64,
+    ) {
+        // check target index price
+        if (long) {
+            assert!(
+                decimal::gt(
+                    &agg_price::price_of(latest_index_price),
+                    &agg_price::price_of(limited_index_price),
+                ),
+                ERR_INVALID_LIMITED_INDEX_PRICE,
+            );
+        } else {
+            assert!(
+                decimal::lt(
+                    &agg_price::price_of(latest_index_price),
+                    &agg_price::price_of(limited_index_price),
+                ),
+                ERR_INVALID_LIMITED_INDEX_PRICE,
+            );
+        };
+
+        assert!(collateral_amount > 0, ERR_INVALID_PLEDGE);
+        assert!(open_amount > 0, ERR_INVALID_OPEN_AMOUNT);
+        assert!(
+            collateral_amount * position_config.max_reserved_multiplier
+                >= reserved_amount,
+            ERR_EXCEED_MAX_RESERVED,
+        );
+        // compute position size
+        let open_size = agg_price::coins_to_value(limited_index_price, open_amount);
+        assert!(
+            decimal::ge(&open_size, &position_config.min_size),
+            ERR_POSITION_SIZE_TOO_LESS,
+        );
+    }
+
+    public(friend) fun handle_create_decrease_position_order<C>(
+        position: &mut Position<C>,
+        latest_index_price: &AggPrice,
+        limited_index_price: &AggPrice,
+        long: bool,
+        decrease_amount: u64,
+    ) {
+        assert!(!position.locked, ERR_POSITION_LOCKED);
+        if (long) {
+            assert!(
+                decimal::lt(
+                    &agg_price::price_of(latest_index_price),
+                    &agg_price::price_of(limited_index_price),
+                ),
+                ERR_INVALID_LIMITED_INDEX_PRICE,
+            );
+        } else {
+            assert!(
+                decimal::gt(
+                    &agg_price::price_of(latest_index_price),
+                    &agg_price::price_of(limited_index_price),
+                ),
+                ERR_INVALID_LIMITED_INDEX_PRICE,
+            );
+        };
+        assert!(
+            decrease_amount > 0 && decrease_amount < position.position_amount,
+            ERR_INVALID_DECREASE_AMOUNT,
+        );
+
+        position.locked = true;
+    }
+
+    public(friend) fun handle_create_close_position_order<C>(
+        position: &mut Position<C>,
+        latest_index_price: &AggPrice,
+        limited_index_price: &AggPrice,
+        long: bool,
+    ) {
+        assert!(!position.locked, ERR_POSITION_LOCKED);
+        if (long) {
+            assert!(
+                decimal::lt(
+                    &agg_price::price_of(latest_index_price),
+                    &agg_price::price_of(limited_index_price),
+                ),
+                ERR_INVALID_LIMITED_INDEX_PRICE,
+            );
+        } else {
+            assert!(
+                decimal::gt(
+                    &agg_price::price_of(latest_index_price),
+                    &agg_price::price_of(limited_index_price),
+                ),
+                ERR_INVALID_LIMITED_INDEX_PRICE,
+            );
+        };
+
+        position.locked = true;
+    }
+
+    public(friend) fun handle_create_take_profit_order<C>(
+        position: &mut Position<C>,
+        profit_threshold: u64,    
+    ) {
+        assert!(!position.locked, ERR_POSITION_LOCKED);
+        assert!(
+            profit_threshold > 0 &&
+                profit_threshold <= balance::value(&position.reserved),
+            ERR_INVALID_PROFIT_THRESHOLD,
+        );
+
+        position.locked = true;
+    }
+
+    public(friend) fun handle_create_stop_loss_order<C>(
+        position: &mut Position<C>,
+        loss_threshold: u64,    
+    ) {
+        assert!(!position.locked, ERR_POSITION_LOCKED);
+        assert!(
+            loss_threshold > 0 &&
+                loss_threshold < balance::value(&position.collateral),
+            ERR_INVALID_LOSS_THRESHOLD,
+        );
+
+        position.locked = true;
+    }
+
+    /// public read functions
+
+    public fun config_max_leverage(config: &PositionConfig): u64 {
+        config.max_leverage
+    }
+
+    public fun config_min_holding_duration(config: &PositionConfig): u64 {
+        config.min_holding_duration
+    }
+
+    public fun config_max_reserved_multiplier(config: &PositionConfig): u64 {
+        config.max_reserved_multiplier
+    }
+
+    public fun config_min_size(config: &PositionConfig): Decimal {
+        config.min_size
+    }
+
+    public fun config_open_fee_bps(config: &PositionConfig): Rate {
+        config.open_fee_bps
+    }
+
+    public fun config_decrease_fee_bps(config: &PositionConfig): Rate {
+        config.decrease_fee_bps
+    }
+
+    public fun config_liquidation_threshold(config: &PositionConfig): Rate {
+        config.liquidation_threshold
+    }
+
+    public fun config_liquidation_bonus(config: &PositionConfig): Rate {
+        config.liquidation_bonus
+    }
+
+    public fun is_locked<C>(position: &Position<C>): bool {
+        position.locked
+    }
 
     public fun position_config<C>(position: &Position<C>): &PositionConfig {
         &position.config

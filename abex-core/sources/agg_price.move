@@ -13,7 +13,7 @@ module abex_core::agg_price {
 
     friend abex_core::market;
 
-    struct AggPrice has drop {
+    struct AggPrice has drop, store {
         price: Decimal,
         precision: u64,
     }
@@ -41,6 +41,10 @@ module abex_core::agg_price {
             precision: pow(10, coin::get_decimals(coin_metadata)),
             feeder: object::id(feeder),
         }
+    }
+
+    public fun from_price(config: &AggPriceConfig, price: Decimal): AggPrice {
+        AggPrice { price, precision: config.precision }
     }
 
     public fun parse_pyth_feeder(

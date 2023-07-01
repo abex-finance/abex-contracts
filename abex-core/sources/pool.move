@@ -16,7 +16,6 @@ module abex_core::pool {
     use abex_core::agg_price::{Self, AggPrice, AggPriceConfig};
     use abex_core::position::{Self, Position, PositionConfig};
 
-    // friend abex_core::delegate;
     friend abex_core::market;
 
     struct Vault<phantom C> has store {
@@ -363,7 +362,7 @@ module abex_core::pool {
         symbol: &mut Symbol,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        position_config: PositionConfig,
+        position_config: &PositionConfig,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
         collateral: Balance<C>,
@@ -435,7 +434,7 @@ module abex_core::pool {
         // create event
         let event = OpenPositionEvent {
             timestamp,
-            position_config,
+            position_config: *position_config,
             collateral_price: agg_price::price_of(collateral_price),
             index_price: agg_price::price_of(index_price),
             open_amount,
@@ -666,7 +665,7 @@ module abex_core::pool {
         long: bool,
         lp_supply_amount: Decimal,
         timestamp: u64,
-    ): (Balance<C>, ClosePositionEvent) {
+    ): (bool, u64, Balance<C>, ClosePositionEvent) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(symbol.decrease_enabled, ERR_DECREASE_DISABLED);
         assert!(
@@ -752,7 +751,7 @@ module abex_core::pool {
             settled_amount,
         };
 
-        (to_trader, event)
+        (has_profit, settled_amount, to_trader, event)
     }
 
     public(friend) fun liquidate_position<C>(
