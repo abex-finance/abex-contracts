@@ -287,7 +287,7 @@ module abex_core::pool {
         balance::split(&mut vault.liquidity, withdraw_amount)
     }
 
-    public(friend) fun swap_source<S>(
+    public(friend) fun swap_in<S>(
         source_vault: &mut Vault<S>,
         model: &RebaseFeeModel,
         source_price: &AggPrice,
@@ -318,7 +318,7 @@ module abex_core::pool {
         )
     }
 
-    public(friend) fun swap_dest<D>(
+    public(friend) fun swap_out<D>(
         dest_vault: &mut Vault<D>,
         model: &RebaseFeeModel,
         dest_price: &AggPrice,

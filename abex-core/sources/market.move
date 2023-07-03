@@ -17,6 +17,7 @@ module abex_core::market {
     use pyth::price_info::{PriceInfoObject as PythFeeder};
 
     use abex_core::admin::AdminCap;
+    use abex_core::rate::{Self, Rate};
     use abex_core::decimal::{Self, Decimal};
     use abex_core::sdecimal::{Self, SDecimal};
     use abex_core::agg_price::{Self, AggPrice};
@@ -39,8 +40,11 @@ module abex_core::market {
     struct Market<phantom L> has key {
         id: UID,
 
+        rebate_rate: Rate,
+        tax_rate: Rate,
         rebase_fee_model: ID,
 
+        referrals: Bag,
         vaults: Bag,
         symbols: Bag,
         positions: Bag,
@@ -55,6 +59,7 @@ module abex_core::market {
     struct WrappedPositionConfig<phantom I, phantom D> has key {
         id: UID,
 
+        enabled: bool,
         inner: PositionConfig,
     }
     
@@ -133,6 +138,13 @@ module abex_core::market {
     }
 
     // === Events ===
+
+    struct MarketCreated has copy, drop {
+        referrals_parent: ID,
+        vaults_parent: ID,
+        symbols_parent: ID,
+        positions_parent: ID,
+    }
 
     struct PositionUpdated<
         phantom C,
@@ -306,6 +318,8 @@ module abex_core::market {
 
     public(friend) fun create_market<L>(
         lp_supply: Supply<L>,
+        rebate_rate: Rate,
+        tax_rate: Rate,
         ctx: &mut TxContext,
     ) {
         // create rebase fee model
@@ -315,16 +329,26 @@ module abex_core::market {
             ctx,
         );
 
-        transfer::share_object(
-            Market {
-                id: object::new(ctx),
-                rebase_fee_model: model_id,
-                vaults: bag::new(ctx),
-                symbols: bag::new(ctx),
-                positions: bag::new(ctx),
-                lp_supply,
-            }
-        );
+        let market = Market {
+            id: object::new(ctx),
+            rebate_rate,
+            tax_rate,
+            rebase_fee_model: model_id,
+            referrals: bag::new(ctx),
+            vaults: bag::new(ctx),
+            symbols: bag::new(ctx),
+            positions: bag::new(ctx),
+            lp_supply,
+        };
+        // emit market created
+        event::emit(MarketCreated {
+            referrals_parent: object::id(&market.referrals),
+            vaults_parent: object::id(&market.vaults),
+            symbols_parent: object::id(&market.symbols),
+            positions_parent: object::id(&market.positions),
+        });
+
+        transfer::share_object(market);
     }
 
     // === entry functions ===
@@ -386,6 +410,7 @@ module abex_core::market {
         transfer::share_object(
             WrappedPositionConfig<I, D> {
                 id: object::new(ctx),
+                enabled: true,
                 inner: position::new_position_config(
                     max_leverage,
                     min_holding_duration,
@@ -2141,7 +2166,7 @@ module abex_core::market {
             vec_map::remove(&mut handled_vaults, &type_name::get<VaultName<D>>());
 
         // swap step 1
-        let swap_value = pool::swap_source<S>(
+        let swap_value = pool::swap_in<S>(
             bag::borrow_mut(&mut market.vaults, VaultName<S> {}),
             model,
             &source_price,
@@ -2152,7 +2177,7 @@ module abex_core::market {
         );
 
         // swap step 2
-        let receiving = pool::swap_dest<D>(
+        let receiving = pool::swap_out<D>(
             bag::borrow_mut(&mut market.vaults, VaultName<D> {}),
             model,
             &dest_price,

@@ -41,7 +41,7 @@ if [ -n "$ok" ]; then
        # modify field ".abex_core.package" in $deployments
        json_content=`jq ".abex_core.package = \"$package\"" $deployments`
 
-       upgrade_cap=`echo "$deploy_log" | grep "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       upgrade_cap=`echo "$deploy_log" | grep "0x2::package::UpgradeCap" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.upgrade_cap" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.upgrade_cap = \"$upgrade_cap\""`
        
@@ -49,17 +49,29 @@ if [ -n "$ok" ]; then
        # modify field ".abex_core.upgrade_cap" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.admin_cap = \"$admin_cap\""`
        
-       market=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field ".abex_core.market" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.market = \"$market\""`
+       market_id=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.market.id" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.market.id = \"${market_id}\""`
 
-       alp_metadata=`echo "$deploy_log" | grep "0x0000000000000000000000000000000000000000000000000000000000000002::coin::CoinMetadata<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field ".abex_core.alp_metadata" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata = \"$alp_metadata\""`
+       market_version=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -A 1 | grep version | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.market.version" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.market.version = ${market_version}"`
 
-       fee_model=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field ".abex_core.rebase_fee_model" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model = \"$fee_model\""`
+       alp_metadata_id=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.alp_metadata.id" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata.id = \"${alp_metadata_id}\""`
+
+       alp_metadata_version=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::alp::ALP>" -A 1 | grep version | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.alp_metadata.version" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata.version = ${alp_metadata_version}"`
+
+       fee_model_id=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.rebase_fee_model.id" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model.id = \"${fee_model_id}\""`
+
+       fee_model_version=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -A 1 | grep version | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.rebase_fee_model.version" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model.version = ${fee_model_version}"`
 
        ### grep from events
 
