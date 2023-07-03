@@ -7,6 +7,7 @@ module abex_core::alp {
     use sui::url;
     use sui::tx_context::TxContext;
 
+    use abex_core::rate;
     use abex_core::market::create_market;
     use abex_core::admin::create_admin_cap;
 
@@ -28,6 +29,11 @@ module abex_core::alp {
         );
         transfer::public_freeze_object(metadata);
 
-        create_market(coin::treasury_into_supply(treasury), ctx);
+        create_market(
+            coin::treasury_into_supply(treasury),
+            rate::from_percent(5),
+            rate::from_percent(30),
+            ctx,
+        );
     }
 }

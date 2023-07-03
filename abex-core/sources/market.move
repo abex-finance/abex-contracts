@@ -17,7 +17,7 @@ module abex_core::market {
     use pyth::price_info::{PriceInfoObject as PythFeeder};
 
     use abex_core::admin::AdminCap;
-    use abex_core::rate::{Self, Rate};
+    use abex_core::rate::Rate;
     use abex_core::decimal::{Self, Decimal};
     use abex_core::sdecimal::{Self, SDecimal};
     use abex_core::agg_price::{Self, AggPrice};
