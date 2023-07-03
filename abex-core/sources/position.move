@@ -95,7 +95,7 @@ module abex_core::position {
         reserving_rate: Rate,
         funding_rate: SRate,
         timestamp: u64,
-    ): (Position<C>, Balance<C>, Decimal) {
+    ): (Position<C>, Balance<C>, Decimal, Decimal) {
         assert!(balance::value(&collateral) > 0, ERR_INVALID_PLEDGE);
         assert!(open_amount > 0, ERR_INVALID_OPEN_AMOUNT);
         assert!(
@@ -112,9 +112,8 @@ module abex_core::position {
 
         // compute open position fee
         let open_fee_value = decimal::mul_with_rate(open_size, config.open_fee_bps);
-        let open_fee_amount = decimal::ceil_u64(
-            agg_price::value_to_coins(collateral_price, open_fee_value)
-        );
+        let open_fee_amount_dec = agg_price::value_to_coins(collateral_price, open_fee_value);
+        let open_fee_amount = decimal::ceil_u64(open_fee_amount_dec);
         assert!(
             open_fee_amount < balance::value(&collateral),
             ERR_INSUFFICIENT_COLLATERAL,
@@ -140,7 +139,7 @@ module abex_core::position {
         let ok = check_leverage(&position, collateral_price, index_price);
         assert!(ok, ERR_LEVERAGE_TOO_LARGE);
 
-        (position, open_fee, open_fee_value)
+        (position, open_fee, open_fee_value, open_fee_amount_dec)
     }
 
     public(friend) fun unlock_position<C>(position: &mut Position<C>) {

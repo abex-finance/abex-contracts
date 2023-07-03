@@ -21,10 +21,13 @@ module abex_core::pool {
     struct Vault<phantom C> has store {
         enabled: bool,
         weight: Decimal,
+        rebate_rate: Rate,
+        tax_rate: Rate,
         reserving_fee_model: ID,
         price_config: AggPriceConfig,
 
         last_update: u64,
+        tax: Balance<C>,
         liquidity: Balance<C>,
         reserved_amount: u64,
         unrealised_reserving_fee_amount: Decimal,
@@ -169,15 +172,20 @@ module abex_core::pool {
 
     public(friend) fun new_vault<C>(
         weight: u256,
+        rebate_rate: u128,
+        tax_rate: u128,
         model_id: ID,
         price_config: AggPriceConfig,
     ): Vault<C> {
         Vault {
             enabled: true,
             weight: decimal::from_raw(weight),
+            rebate_rate: rate::from_raw(rebate_rate),
+            tax_rate: rate::from_raw(tax_rate),
             reserving_fee_model: model_id,
             price_config,
             last_update: 0,
+            tax: balance::zero(),
             liquidity: balance::zero(),
             reserved_amount: 0,
             unrealised_reserving_fee_amount: decimal::zero(),
@@ -371,7 +379,7 @@ module abex_core::pool {
         reserved_amount: u64,
         lp_supply_amount: Decimal,
         timestamp: u64,
-    ): (Position<C>, OpenPositionEvent) {
+    ): (Position<C>, Balance<C>, OpenPositionEvent) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(symbol.open_enabled, ERR_OPEN_DISABLED);
         assert!(
@@ -408,7 +416,12 @@ module abex_core::pool {
         );
 
         // open position
-        let (position, open_fee, open_fee_value) = position::open_position(
+        let (
+            position,
+            open_fee,
+            open_fee_value,
+            open_fee_amount,
+        ) = position::open_position(
             position_config,
             collateral_price,
             index_price,
@@ -420,8 +433,23 @@ module abex_core::pool {
             timestamp,
         );
 
+        // compute tax and rebate
+        let tax = balance::split(
+            &mut open_fee,
+            decimal::floor_u64(
+                decimal::mul_with_rate(open_fee_amount, vault.tax_rate),
+            ),
+        );
+        let rebate = balance::split(
+            &mut open_fee,
+            decimal::floor_u64(
+                decimal::mul_with_rate(open_fee_amount, vault.rebate_rate),
+            ),
+        );
+
         // update vault
         vault.reserved_amount = vault.reserved_amount + reserved_amount;
+        let _ = balance::join(&mut vault.tax, tax);
         let _ = balance::join(&mut vault.liquidity, open_fee);
 
         // update symbol
@@ -443,7 +471,7 @@ module abex_core::pool {
             collateral_amount: position::collateral_amount(&position),
         };
 
-        (position, event)
+        (position, rebate, event)
     }
 
     public(friend) fun decrease_reserved_from_position<C>(
@@ -561,7 +589,7 @@ module abex_core::pool {
         decrease_amount: u64,
         lp_supply_amount: Decimal,
         timestamp: u64,
-    ): (Balance<C>, DecreasePositionEvent) {
+    ): (Balance<C>, Balance<C>, DecreasePositionEvent) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(symbol.decrease_enabled, ERR_DECREASE_DISABLED);
         assert!(
@@ -609,12 +637,29 @@ module abex_core::pool {
             timestamp,
         );
 
+        // compute tax and rebate
+        let tax_value = decimal::mul_with_rate(decrease_fee_value, vault.tax_rate);
+        let rebate_value = decimal::mul_with_rate(decrease_fee_value, vault.rebate_rate);
+        let tax = balance::split(
+            &mut to_vault,
+            decimal::floor_u64(
+                agg_price::value_to_coins(collateral_price, tax_value)
+            ),
+        );
+        let rebate = balance::split(
+            &mut to_vault,
+            decimal::floor_u64(
+                agg_price::value_to_coins(collateral_price, rebate_value)
+            ),
+        );
+
         // update vault
         vault.reserved_amount = vault.reserved_amount - decreased_reserved_amount;
         vault.unrealised_reserving_fee_amount = decimal::sub(
             vault.unrealised_reserving_fee_amount,
             reserving_fee_amount,
         );
+        let _ = balance::join(&mut vault.tax, tax);
         let _ = balance::join(&mut vault.liquidity, to_vault);
 
         // update symbol
@@ -629,14 +674,14 @@ module abex_core::pool {
             sdecimal::sub_with_decimal(
                 sdecimal::from_decimal(
                     !has_profit,
-                    agg_price::coins_to_value(
-                        collateral_price,
-                        settled_amount,
-                    ),
+                    agg_price::coins_to_value(collateral_price, settled_amount),
                 ),
-                // exclude close fee and reserving fee
-                decimal::add(decrease_fee_value, reserving_fee_value),
-            )
+                // exclude: decrease fee + reserving fee - tax - rebate
+                decimal::sub(
+                    decimal::add(decrease_fee_value, reserving_fee_value),
+                    decimal::add(tax_value, rebate_value),
+                ),
+            ),
         );
 
         let event = DecreasePositionEvent {
@@ -651,7 +696,7 @@ module abex_core::pool {
             settled_amount,
         };
 
-        (to_trader, event)
+        (to_trader, rebate, event)
     }
 
     public(friend) fun close_position<C>(
@@ -665,7 +710,7 @@ module abex_core::pool {
         long: bool,
         lp_supply_amount: Decimal,
         timestamp: u64,
-    ): (bool, u64, Balance<C>, ClosePositionEvent) {
+    ): (bool, u64, Balance<C>, Balance<C>, ClosePositionEvent) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(symbol.decrease_enabled, ERR_DECREASE_DISABLED);
         assert!(
@@ -713,12 +758,29 @@ module abex_core::pool {
             timestamp,
         );
 
+        // compute tax and rebate
+        let tax_value = decimal::mul_with_rate(close_fee_value, vault.tax_rate);
+        let rebate_value = decimal::mul_with_rate(close_fee_value, vault.rebate_rate);
+        let tax = balance::split(
+            &mut to_vault,
+            decimal::floor_u64(
+                agg_price::value_to_coins(collateral_price, tax_value)
+            ),
+        );
+        let rebate = balance::split(
+            &mut to_vault,
+            decimal::floor_u64(
+                agg_price::value_to_coins(collateral_price, rebate_value)
+            ),
+        );
+
         // update vault
         vault.reserved_amount = vault.reserved_amount - reserved_amount;
         vault.unrealised_reserving_fee_amount = decimal::sub(
             vault.unrealised_reserving_fee_amount,
             reserving_fee_amount,
         );
+        let _ = balance::join(&mut vault.tax, tax);
         let _ = balance::join(&mut vault.liquidity, to_vault);
 
         // update symbol
@@ -735,8 +797,11 @@ module abex_core::pool {
                     !has_profit,
                     agg_price::coins_to_value(collateral_price, settled_amount),
                 ),
-                // exclude close fee and reserving fee
-                decimal::add(close_fee_value, reserving_fee_value),
+                // exclude: close fee + reserving fee - tax - rebate
+                decimal::sub(
+                    decimal::add(close_fee_value, reserving_fee_value),
+                    decimal::add(tax_value, rebate_value),
+                ),
             ),
         );
 
@@ -751,7 +816,7 @@ module abex_core::pool {
             settled_amount,
         };
 
-        (has_profit, settled_amount, to_trader, event)
+        (has_profit, settled_amount, to_trader, rebate, event)
     }
 
     public(friend) fun liquidate_position<C>(
