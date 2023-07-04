@@ -6,6 +6,7 @@ module abex_core::market {
     use sui::event;
     use sui::transfer;
     use sui::bag::{Self, Bag};
+    use sui::table::{Self, Table};
     use sui::clock::{Self, Clock};
     use sui::vec_set::{Self, VecSet};
     use sui::vec_map::{Self, VecMap};
@@ -17,7 +18,8 @@ module abex_core::market {
     use pyth::price_info::{PriceInfoObject as PythFeeder};
 
     use abex_core::admin::AdminCap;
-    use abex_core::rate::Rate;
+    use abex_core::rate::{Self, Rate};
+    use abex_core::referral::{Self, Referral};
     use abex_core::decimal::{Self, Decimal};
     use abex_core::sdecimal::{Self, SDecimal};
     use abex_core::agg_price::{Self, AggPrice};
@@ -41,10 +43,9 @@ module abex_core::market {
         id: UID,
 
         rebate_rate: Rate,
-        tax_rate: Rate,
         rebase_fee_model: ID,
 
-        referrals: Bag,
+        referrals: Table<address, Referral>,
         vaults: Bag,
         symbols: Bag,
         positions: Bag,
@@ -260,6 +261,18 @@ module abex_core::market {
         }
     }
 
+    fun get_referral_data(
+        referrals: &Table<address, Referral>,
+        owner: address
+    ): (Rate, address) {
+        if (table::contains(referrals, owner)) {
+            let referral = table::borrow(referrals, owner);
+            (referral::get_rebate_rate(referral), referral::get_referrer(referral))
+        } else {
+            (rate::zero(), @0x0)
+        }
+    }
+
     fun finalize_vaults_valuation(
         valuation: VaultsValuation,
     ): (VecMap<TypeName, VaultInfo>, Decimal, Decimal) {
@@ -319,7 +332,6 @@ module abex_core::market {
     public(friend) fun create_market<L>(
         lp_supply: Supply<L>,
         rebate_rate: Rate,
-        tax_rate: Rate,
         ctx: &mut TxContext,
     ) {
         // create rebase fee model
@@ -332,9 +344,8 @@ module abex_core::market {
         let market = Market {
             id: object::new(ctx),
             rebate_rate,
-            tax_rate,
             rebase_fee_model: model_id,
-            referrals: bag::new(ctx),
+            referrals: table::new(ctx),
             vaults: bag::new(ctx),
             symbols: bag::new(ctx),
             positions: bag::new(ctx),
@@ -511,14 +522,8 @@ module abex_core::market {
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
 
-        let vault: &mut Vault<C> = bag::borrow_mut(
-            &mut market.vaults,
-            VaultName<C> {},
-        );
-        let symbol: &mut Symbol = bag::borrow_mut(
-            &mut market.symbols,
-            SymbolName<I, D> {},
-        );
+        let vault: &mut Vault<C> = bag::borrow_mut(&mut market.vaults, VaultName<C> {});
+        let symbol: &mut Symbol = bag::borrow_mut(&mut market.symbols, SymbolName<I, D> {});
 
         let collateral_price = agg_price::parse_pyth_feeder(
             pool::vault_price_config(vault),
@@ -553,12 +558,13 @@ module abex_core::market {
             }
         };
 
+        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
         let position_id = object::new(ctx);
         let position_name = PositionName<C, I, D> {
             id: object::uid_to_inner(&position_id),
             owner,
         };
-        let (position, event) = pool::open_position(
+        let (position, rebate, event) = pool::open_position(
             vault,
             symbol,
             reserving_fee_model,
@@ -567,6 +573,7 @@ module abex_core::market {
             &collateral_price,
             &index_price,
             coin::into_balance(collateral),
+            rebate_rate,
             long,
             open_amount,
             reserved_amount,
@@ -576,6 +583,8 @@ module abex_core::market {
         bag::add(&mut market.positions, position_name, position);
 
         transfer::transfer(PositionCap<C, I, D> { id: position_id }, owner);
+
+        pay_from_balance(rebate, referrer, ctx);
 
         // emit open position
         event::emit(PositionUpdated<C, I, D, OpenPositionEvent> {
@@ -806,7 +815,8 @@ module abex_core::market {
             timestamp,
         );
 
-        let (profit, event) = pool::decrease_position(
+        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (received, rebate, event) = pool::decrease_position(
             vault,
             symbol,
             position,
@@ -814,13 +824,15 @@ module abex_core::market {
             funding_fee_model,
             &collateral_price,
             &index_price,
+            rebate_rate,
             long,
             decrease_amount,
             lp_supply_amount,
             timestamp,
         );
 
-        pay_from_balance(profit, owner, ctx);
+        pay_from_balance(received, owner, ctx);
+        pay_from_balance(rebate, referrer, ctx);
 
         // emit decrease position
         event::emit(PositionUpdated<C, I, D, DecreasePositionEvent> {
@@ -889,7 +901,8 @@ module abex_core::market {
             timestamp,
         );
 
-        let (_, _, received, event) = pool::close_position(
+        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (_, _, received, rebate, event) = pool::close_position(
             vault,
             symbol,
             position,
@@ -897,12 +910,14 @@ module abex_core::market {
             funding_fee_model,
             &collateral_price,
             &index_price,
+            rebate_rate,
             long,
             lp_supply_amount,
             timestamp,
         );
 
         pay_from_balance(received, owner, ctx);
+        pay_from_balance(rebate, referrer, ctx);
 
         // emit close position
         event::emit(PositionUpdated<C, I, D, ClosePositionEvent> {
@@ -1529,7 +1544,8 @@ module abex_core::market {
             );
         };
 
-        let (position, event) = pool::open_position(
+        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (position, rebate, event) = pool::open_position(
             vault,
             symbol,
             reserving_fee_model,
@@ -1538,6 +1554,7 @@ module abex_core::market {
             &collateral_price,
             &limited_index_price,
             collateral,
+            rebate_rate,
             long,
             open_amount,
             reserved_amount,
@@ -1555,6 +1572,7 @@ module abex_core::market {
         transfer::transfer(PositionCap<C, I, D> { id: position_id }, owner);
 
         pay_from_balance(fee, executor, ctx);
+        pay_from_balance(rebate, referrer, ctx);
 
         // emit open position order executed
         event::emit(OrderExecuted {
@@ -1657,7 +1675,11 @@ module abex_core::market {
             );
         };
 
-        let (profit, event) = pool::decrease_position(
+        let (rebate_rate, referrer) = get_referral_data(
+            &market.referrals,
+            position_name.owner,
+        );
+        let (received, rabate, event) = pool::decrease_position(
             vault,
             symbol,
             position,
@@ -1665,13 +1687,15 @@ module abex_core::market {
             funding_fee_model,
             &collateral_price,
             &limited_index_price,
+            rebate_rate,
             long,
             decrease_amount,
             lp_supply_amount,
             timestamp,
         );
 
-        pay_from_balance(profit, position_name.owner, ctx);
+        pay_from_balance(received, position_name.owner, ctx);
+        pay_from_balance(rabate, referrer, ctx);
         pay_from_balance(fee, executor, ctx);
 
         // emit decrease position order executed
@@ -1774,7 +1798,11 @@ module abex_core::market {
             );
         };
 
-        let (_, _, received, event) = pool::close_position(
+        let (rebate_rate, referrer) = get_referral_data(
+            &market.referrals,
+            position_name.owner,
+        );
+        let (_, _, received, rebate, event) = pool::close_position(
             vault,
             symbol,
             position,
@@ -1782,12 +1810,14 @@ module abex_core::market {
             funding_fee_model,
             &collateral_price,
             &limited_index_price,
+            rebate_rate,
             long,
             lp_supply_amount,
             timestamp,
         );
 
         pay_from_balance(received, position_name.owner, ctx);
+        pay_from_balance(rebate, referrer, ctx);
         pay_from_balance(fee, executor, ctx);
 
         // emit close position order executed
@@ -1865,7 +1895,11 @@ module abex_core::market {
             timestamp,
         );
 
-        let (has_profit, settle_amount, received, event) = pool::close_position(
+        let (rebate_rate, referrer) = get_referral_data(
+            &market.referrals,
+            position_name.owner,
+        );
+        let (has_profit, settle_amount, received, rebate, event) = pool::close_position(
             vault,
             symbol,
             position,
@@ -1873,6 +1907,7 @@ module abex_core::market {
             funding_fee_model,
             &collateral_price,
             &index_price,
+            rebate_rate,
             long,
             lp_supply_amount,
             timestamp,
@@ -1880,6 +1915,7 @@ module abex_core::market {
         assert!(has_profit && settle_amount >= profit_threshold, ERR_TAKE_PROFIT_NOT_TRIGGERED);
 
         pay_from_balance(received, position_name.owner, ctx);
+        pay_from_balance(rebate, referrer, ctx);
         pay_from_balance(fee, executor, ctx);
 
         // emit take profit order executed
@@ -1957,7 +1993,11 @@ module abex_core::market {
             timestamp,
         );
 
-        let (has_profit, settle_amount, received, event) = pool::close_position(
+        let (rebate_rate, referrer) = get_referral_data(
+            &market.referrals,
+            position_name.owner,
+        );
+        let (has_profit, settle_amount, received, rebate, event) = pool::close_position(
             vault,
             symbol,
             position,
@@ -1965,6 +2005,7 @@ module abex_core::market {
             funding_fee_model,
             &collateral_price,
             &index_price,
+            rebate_rate,
             long,
             lp_supply_amount,
             timestamp,
@@ -1972,6 +2013,7 @@ module abex_core::market {
         assert!(!has_profit && settle_amount >= loss_threshold, ERR_STOP_LOSS_NOT_TRIGGERED);
 
         pay_from_balance(received, position_name.owner, ctx);
+        pay_from_balance(rebate, referrer, ctx);
         pay_from_balance(fee, executor, ctx);
 
         // emit stop loss order executed

@@ -21,8 +21,6 @@ module abex_core::pool {
     struct Vault<phantom C> has store {
         enabled: bool,
         weight: Decimal,
-        rebate_rate: Rate,
-        tax_rate: Rate,
         reserving_fee_model: ID,
         price_config: AggPriceConfig,
 
@@ -172,16 +170,12 @@ module abex_core::pool {
 
     public(friend) fun new_vault<C>(
         weight: u256,
-        rebate_rate: u128,
-        tax_rate: u128,
         model_id: ID,
         price_config: AggPriceConfig,
     ): Vault<C> {
         Vault {
             enabled: true,
             weight: decimal::from_raw(weight),
-            rebate_rate: rate::from_raw(rebate_rate),
-            tax_rate: rate::from_raw(tax_rate),
             reserving_fee_model: model_id,
             price_config,
             last_update: 0,
@@ -374,6 +368,7 @@ module abex_core::pool {
         collateral_price: &AggPrice,
         index_price: &AggPrice,
         collateral: Balance<C>,
+        rebate_rate: Rate,
         long: bool,
         open_amount: u64,
         reserved_amount: u64,
@@ -433,23 +428,14 @@ module abex_core::pool {
             timestamp,
         );
 
-        // compute tax and rebate
-        let tax = balance::split(
-            &mut open_fee,
-            decimal::floor_u64(
-                decimal::mul_with_rate(open_fee_amount, vault.tax_rate),
-            ),
-        );
+        // compute rebate
         let rebate = balance::split(
             &mut open_fee,
-            decimal::floor_u64(
-                decimal::mul_with_rate(open_fee_amount, vault.rebate_rate),
-            ),
+            decimal::floor_u64(decimal::mul_with_rate(open_fee_amount, rebate_rate)),
         );
 
         // update vault
         vault.reserved_amount = vault.reserved_amount + reserved_amount;
-        let _ = balance::join(&mut vault.tax, tax);
         let _ = balance::join(&mut vault.liquidity, open_fee);
 
         // update symbol
@@ -585,6 +571,7 @@ module abex_core::pool {
         funding_fee_model: &FundingFeeModel,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
+        rebate_rate: Rate,
         long: bool,
         decrease_amount: u64,
         lp_supply_amount: Decimal,
@@ -637,20 +624,11 @@ module abex_core::pool {
             timestamp,
         );
 
-        // compute tax and rebate
-        let tax_value = decimal::mul_with_rate(decrease_fee_value, vault.tax_rate);
-        let rebate_value = decimal::mul_with_rate(decrease_fee_value, vault.rebate_rate);
-        let tax = balance::split(
-            &mut to_vault,
-            decimal::floor_u64(
-                agg_price::value_to_coins(collateral_price, tax_value)
-            ),
-        );
+        // compute rebate
+        let rebate_value = decimal::mul_with_rate(decrease_fee_value, rebate_rate);
         let rebate = balance::split(
             &mut to_vault,
-            decimal::floor_u64(
-                agg_price::value_to_coins(collateral_price, rebate_value)
-            ),
+            decimal::floor_u64(agg_price::value_to_coins(collateral_price, rebate_value)),
         );
 
         // update vault
@@ -659,7 +637,6 @@ module abex_core::pool {
             vault.unrealised_reserving_fee_amount,
             reserving_fee_amount,
         );
-        let _ = balance::join(&mut vault.tax, tax);
         let _ = balance::join(&mut vault.liquidity, to_vault);
 
         // update symbol
@@ -676,10 +653,10 @@ module abex_core::pool {
                     !has_profit,
                     agg_price::coins_to_value(collateral_price, settled_amount),
                 ),
-                // exclude: decrease fee + reserving fee - tax - rebate
-                decimal::sub(
-                    decimal::add(decrease_fee_value, reserving_fee_value),
-                    decimal::add(tax_value, rebate_value),
+                // exclude: decrease fee - rebate + reserving fee
+                decimal::add(
+                    decimal::sub(decrease_fee_value, rebate_value),
+                    reserving_fee_value,
                 ),
             ),
         );
@@ -707,6 +684,7 @@ module abex_core::pool {
         funding_fee_model: &FundingFeeModel,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
+        rebate_rate: Rate,
         long: bool,
         lp_supply_amount: Decimal,
         timestamp: u64,
@@ -758,20 +736,11 @@ module abex_core::pool {
             timestamp,
         );
 
-        // compute tax and rebate
-        let tax_value = decimal::mul_with_rate(close_fee_value, vault.tax_rate);
-        let rebate_value = decimal::mul_with_rate(close_fee_value, vault.rebate_rate);
-        let tax = balance::split(
-            &mut to_vault,
-            decimal::floor_u64(
-                agg_price::value_to_coins(collateral_price, tax_value)
-            ),
-        );
+        // compute rebate
+        let rebate_value = decimal::mul_with_rate(close_fee_value, rebate_rate);
         let rebate = balance::split(
             &mut to_vault,
-            decimal::floor_u64(
-                agg_price::value_to_coins(collateral_price, rebate_value)
-            ),
+            decimal::floor_u64(agg_price::value_to_coins(collateral_price, rebate_value)),
         );
 
         // update vault
@@ -780,7 +749,6 @@ module abex_core::pool {
             vault.unrealised_reserving_fee_amount,
             reserving_fee_amount,
         );
-        let _ = balance::join(&mut vault.tax, tax);
         let _ = balance::join(&mut vault.liquidity, to_vault);
 
         // update symbol
@@ -797,10 +765,10 @@ module abex_core::pool {
                     !has_profit,
                     agg_price::coins_to_value(collateral_price, settled_amount),
                 ),
-                // exclude: close fee + reserving fee - tax - rebate
-                decimal::sub(
-                    decimal::add(close_fee_value, reserving_fee_value),
-                    decimal::add(tax_value, rebate_value),
+                // exclude: close fee - rebate + reserving fee
+                decimal::add(
+                    decimal::sub(close_fee_value, rebate_value),
+                    reserving_fee_value,
                 ),
             ),
         );

@@ -32,7 +32,6 @@ module abex_core::alp {
         create_market(
             coin::treasury_into_supply(treasury),
             rate::from_percent(5),
-            rate::from_percent(30),
             ctx,
         );
     }
