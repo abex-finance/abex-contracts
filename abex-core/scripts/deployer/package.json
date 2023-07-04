@@ -1,0 +1,20 @@
+{
+  "name": "deployer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "deploy.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.3.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "@mysten/sui.js": "^0.37.1",
+    "minimist": "^1.2.8"
+  }
+}
