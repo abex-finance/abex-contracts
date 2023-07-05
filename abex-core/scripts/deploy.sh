@@ -53,25 +53,25 @@ if [ -n "$ok" ]; then
        # modify field ".abex_core.market.id" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.market.id = \"${market_id}\""`
 
-       market_version=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -A 1 | grep version | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       market_version=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -B 3 | grep initial_shared_version | awk -F 'Number\\(' '{print $2}' | awk -F '\\)' '{print $1}'`
        # modify field ".abex_core.market.version" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.market.version = \"${market_version}\""`
+       json_content=`echo "$json_content" | jq ".abex_core.market.version = ${market_version}"`
 
        alp_metadata_id=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.alp_metadata.id" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.alp_metadata.id = \"${alp_metadata_id}\""`
 
-       alp_metadata_version=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::alp::ALP>" -A 1 | grep version | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       alp_metadata_version=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::alp::ALP>" -B 3 | grep initial_shared_version | awk -F 'Number\\(' '{print $2}' | awk -F '\\)' '{print $1}'`
        # modify field ".abex_core.alp_metadata.version" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata.version = \"${alp_metadata_version}"\"`
+       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata.version = ${alp_metadata_version}"`
 
        fee_model_id=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.rebase_fee_model.id" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model.id = \"${fee_model_id}\""`
 
-       fee_model_version=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -A 1 | grep version | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       fee_model_version=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -B 3 | grep initial_shared_version | awk -F 'Number\\(' '{print $2}' | awk -F '\\)' '{print $1}'`
        # modify field ".abex_core.rebase_fee_model.version" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model.version = \"${fee_model_version}"\"`
+       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model.version = ${fee_model_version}"`
 
        ### grep from events
 
