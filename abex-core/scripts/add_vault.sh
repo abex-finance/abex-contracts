@@ -50,7 +50,7 @@ add_log=`sui client --client.config $config \
                      ${max_interval} \
                      ${max_price_confidence} \
                      ${coin_metadata} \
-                     ${native_feeder} \
+                     ${pyth_feeder} \
                      ${param_multiplier}`
 echo "$add_log"
 
