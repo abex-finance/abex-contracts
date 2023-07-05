@@ -75,15 +75,19 @@ if [ -n "$ok" ]; then
 
        ### grep from events
 
-       vaults_parent=`echo "$deploy_log" | grep "vaults_parent_id" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       referrals_parent=`echo "$deploy_log" | grep "referrals_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.referrals_parent" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.referrals_parent = \"$referrals_parent\""`
+
+       vaults_parent=`echo "$deploy_log" | grep "vaults_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.vaults_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.vaults_parent = \"$vaults_parent\""`
 
-       symbols_parent=`echo "$deploy_log" | grep "symbols_parent_id" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       symbols_parent=`echo "$deploy_log" | grep "symbols_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.symbols_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.symbols_parent = \"$symbols_parent\""`
 
-       positions_parent=`echo "$deploy_log" | grep "positions_parent_id" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       positions_parent=`echo "$deploy_log" | grep "positions_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.positions_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.positions_parent = \"$positions_parent\""`
 
