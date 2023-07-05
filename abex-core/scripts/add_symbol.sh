@@ -5,6 +5,7 @@ read -p "Import gas budget (default: 1000000000): " gas_budget
 read -p "Import the index coin name: " coin
 read -p "Import the symbol direction (default: LONG): " direction
 read -p "Import max price interval in seconds (default: 90): " max_interval
+read -p "Import max price confidence (default: 18446744073709551615): " max_price_confidence
 read -p "Import param multiplier (default: 25000000000000000): " param_multiplier
 read -p "Import param max (default: 5000000000000000): " param_max
 read -p "Import max leverage (default: 100): " max_leverage
@@ -31,6 +32,9 @@ if [ -z "$direction" ]; then
 fi
 if [ -z "${max_interval}" ]; then
        max_interval=90
+fi
+if [ -z "${max_price_confidence}" ]; then
+       max_price_confidence=18446744073709551615
 fi
 if [ -z "${param_multiplier}" ]; then
     param_multiplier=25000000000000000
@@ -65,10 +69,10 @@ fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
-market=`cat $deployments | jq -r ".abex_core.market"`
+market=`cat $deployments | jq -r ".abex_core.market.id"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
 coin_metadata=`cat $deployments | jq -r ".coins.$coin.metadata"`
-native_feeder=`cat $deployments | jq -r ".abex_feeder.feeder.$coin"`
+pyth_feeder=`cat $deployments | jq -r ".pyth_feeder.feeder.$coin.id"`
 
 # add new symbol
 add_log=`sui client --client.config $config \
@@ -80,8 +84,9 @@ add_log=`sui client --client.config $config \
               --args ${admin_cap} \
                      $market \
                      ${max_interval} \
+                     ${max_price_confidence} \
                      ${coin_metadata} \
-                     ${native_feeder} \
+                     ${pyth_feeder} \
                      ${param_multiplier} \
                      ${param_max} \
                      ${max_leverage} \

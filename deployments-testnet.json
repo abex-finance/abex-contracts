@@ -25,22 +25,28 @@
     "package": "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44",
     "state": {
       "id": "0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a",
-      "version": 5556570
+      "version": 222635
     },
     "wormhole": {
       "package": "0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e",
       "state": {
         "id": "0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02",
-        "version": 5556570
+        "version": 222633
       }
     },
     "feeder": {
-      "fsui": "0x0",
-      "btc": "0x0",
-      "eth": "0x0",
-      "usdt": "0x0",
-      "pepe": "0x0",
-      "doge": "0x0"
+      "fsui": {
+        "id": "0xe38dbe2ff3322f1500fff45d0046101f371eebce47c067c5e9233248c4878c28",
+        "version": 223257
+      },
+      "btc": {
+        "id": "0x878b118488aeb5763b5f191675c3739a844ce132cb98150a465d9407d7971e7c",
+        "version": 223096
+      },
+      "usdt": {
+        "id": "0x83f74b8a33b540cbf1edd24e219eac1215d1668a711ca2be3aa5d703763f91db",
+        "version": 223164
+      }
     }
   },
   "coins": {
