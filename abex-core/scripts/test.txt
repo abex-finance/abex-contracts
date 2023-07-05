@@ -1,0 +1,14 @@
+Object {
+        "type": String("created"),
+        "sender": String("0x29d8da4a6fe06b7c1acfff4f0d2632529ec69e2c25b725c1ca35366947adc002"),
+        "owner": Object {
+            "Shared": Object {
+                "initial_shared_version": Number(2557),
+            },
+        },
+        "objectType": String("0xb3374f428cf6f01b1090c1fee4ca3d190a98a30c878964ba197597138a877573::model::RebaseFeeModel"),
+        "objectId": String("0x81646cb3b8237369d8f0f23a9d9801420961ed6c405d1a5d9e36671b3d458d2d"),
+        "version": String("2557"),
+        "digest": String("FKwcz5YZaPBJRUgvUjwpEjBn5snECUTaPNDk486382yb"),
+    },
+}
