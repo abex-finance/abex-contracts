@@ -4,13 +4,22 @@
 version = 0
 
 dependencies = [
+  { name = "Pyth" },
   { name = "Sui" },
-  { name = "abex-feeder" },
 ]
 
 [[move.package]]
 name = "MoveStdlib"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "sui-v1.0.0", subdir = "crates/sui-framework/packages/move-stdlib" }
+
+[[move.package]]
+name = "Pyth"
+source = { local = "../vendor/pyth" }
+
+dependencies = [
+  { name = "Sui" },
+  { name = "Wormhole" },
+]
 
 [[move.package]]
 name = "Sui"
@@ -21,8 +30,8 @@ dependencies = [
 ]
 
 [[move.package]]
-name = "abex-feeder"
-source = { local = "../abex-feeder" }
+name = "Wormhole"
+source = { local = "../vendor/wormhole" }
 
 dependencies = [
   { name = "Sui" },
