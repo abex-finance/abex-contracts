@@ -57,7 +57,9 @@
         "supported_collaterals": [
           "fsui",
           "usdt"
-        ]
+        ],
+        "funding_fee_model": "0xb877a83869c24ccdac747302a85e1b9e9bf85c17655062e10f3d39ff9ff06508",
+        "position_config": "0x2e0b946198f6a8ba7bf1270c21e0e727627893bf3bea51c81efa9653782e5f53"
       }
     },
     "referrals_parent": "0xe6e9090830fc235ea173aa45a5c07c95be31b0ba324118fc909600c6139a04a1"
