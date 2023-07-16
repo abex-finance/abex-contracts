@@ -1,5 +1,6 @@
 
 module abex_core::pool {
+    use std::option::{Self, Option};
     use std::type_name::{Self, TypeName};
 
     use sui::object::{Self, ID};
@@ -17,6 +18,8 @@ module abex_core::pool {
     use abex_core::position::{Self, Position, PositionConfig};
 
     friend abex_core::market;
+
+    // === Storage ===
 
     struct Vault<phantom C> has store {
         enabled: bool,
@@ -48,17 +51,62 @@ module abex_core::pool {
         acc_funding_rate: SRate,
     }
 
+    // === Cache State ===
+
+    struct OpenPositionResult<phantom C> {
+        position: Position<C>,
+        rebate: Balance<C>,
+        event: OpenPositionSuccessEvent,
+    }
+
+    struct DecreasePositionResult<phantom C> {
+        to_trader: Balance<C>,
+        rebate: Balance<C>,
+        event: DecreasePositionSuccessEvent,
+    }
+
     // === Position Events ===
 
-    struct OpenPositionEvent has copy, drop {
+    struct OpenPositionSuccessEvent has copy, drop {
         timestamp: u64,
         position_config: PositionConfig,
         collateral_price: Decimal,
         index_price: Decimal,
         open_amount: u64,
         open_fee_value: Decimal,
-        reserved_amount: u64,
+        reserve_amount: u64,
         collateral_amount: u64,
+    }
+
+    struct OpenPositionFailedEvent has copy, drop {
+        timestamp: u64,
+        position_config: PositionConfig,
+        collateral_price: Decimal,
+        index_price: Decimal,
+        open_amount: u64,
+        collateral_amount: u64,
+        code: u64,
+    }
+
+    struct DecreasePositionSuccessEvent has copy, drop {
+        timestamp: u64,
+        collateral_price: Decimal,
+        index_price: Decimal,
+        decrease_amount: u64,
+        decrease_fee_value: Decimal,
+        reserving_fee_value: Decimal,
+        funding_fee_value: SDecimal,
+        closed: bool,
+        has_profit: bool,
+        settled_amount: u64,
+    }
+
+    struct DecreasePositionFailedEvent has copy, drop {
+        timestamp: u64,
+        collateral_price: Decimal,
+        index_price: Decimal,
+        decrease_amount: u64,
+        code: u64,
     }
 
     struct DecreaseReservedFromPositionEvent has copy, drop {
@@ -74,29 +122,6 @@ module abex_core::pool {
     struct RedeemFromPositionEvent has copy, drop {
         timestamp: u64,
         redeem_amount: u64,
-    }
-
-    struct DecreasePositionEvent has copy, drop {
-        timestamp: u64,
-        collateral_price: Decimal,
-        index_price: Decimal,
-        decrease_amount: u64,
-        decrease_fee_value: Decimal,
-        reserving_fee_value: Decimal,
-        funding_fee_value: SDecimal,
-        has_profit: bool,
-        settled_amount: u64,
-    }
-
-    struct ClosePositionEvent has copy, drop {
-        timestamp: u64,
-        collateral_price: Decimal,
-        index_price: Decimal,
-        close_fee_value: Decimal,
-        reserving_fee_value: Decimal,
-        funding_fee_value: SDecimal,
-        has_profit: bool,
-        settled_amount: u64,
     }
 
     struct LiquidatePositionEvent has copy, drop {
@@ -367,14 +392,15 @@ module abex_core::pool {
         position_config: &PositionConfig,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
-        collateral: Balance<C>,
+        collateral: &mut Balance<C>,
         rebate_rate: Rate,
         long: bool,
         open_amount: u64,
-        reserved_amount: u64,
+        reserve_amount: u64,
         lp_supply_amount: Decimal,
         timestamp: u64,
-    ): (Position<C>, Balance<C>, OpenPositionEvent) {
+    ): (u64, Option<OpenPositionResult<C>>, Option<OpenPositionFailedEvent>) {
+        // Pool errors are no need to be catched
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(symbol.open_enabled, ERR_OPEN_DISABLED);
         assert!(
@@ -393,7 +419,7 @@ module abex_core::pool {
             ERR_COLLATERAL_NOT_SUPPORTED,
         );
         assert!(
-            balance::value(&vault.liquidity) > reserved_amount,
+            balance::value(&vault.liquidity) > reserve_amount,
             ERR_INSUFFICIENT_LIQUIDITY,
         );
 
@@ -411,22 +437,35 @@ module abex_core::pool {
         );
 
         // open position
-        let (
-            position,
-            open_fee,
-            open_fee_value,
-            open_fee_amount,
-        ) = position::open_position(
+        let (code, result) = position::open_position(
             position_config,
             collateral_price,
             index_price,
-            balance::split(&mut vault.liquidity, reserved_amount),
+            &mut vault.liquidity,
             collateral,
             open_amount,
+            reserve_amount,
             vault.acc_reserving_rate,
             symbol.acc_funding_rate,
             timestamp,
         );
+        if (code > 0) {
+            option::destroy_none(result);
+            
+            let event = OpenPositionFailedEvent {
+                timestamp,
+                position_config: *position_config,
+                collateral_price: agg_price::price_of(collateral_price),
+                index_price: agg_price::price_of(index_price),
+                open_amount,
+                collateral_amount: balance::value(collateral),
+                code,
+            };
+            return (code, option::none(), option::some(event))
+        };
+
+        let (position, open_fee, open_fee_value, open_fee_amount) =
+            position::unwrap_open_position_result(option::destroy_some(result));
 
         // compute rebate
         let rebate = balance::split(
@@ -435,7 +474,7 @@ module abex_core::pool {
         );
 
         // update vault
-        vault.reserved_amount = vault.reserved_amount + reserved_amount;
+        vault.reserved_amount = vault.reserved_amount + reserve_amount;
         let _ = balance::join(&mut vault.liquidity, open_fee);
 
         // update symbol
@@ -445,19 +484,183 @@ module abex_core::pool {
         );
         symbol.opening_amount = symbol.opening_amount + open_amount;
 
-        // create event
-        let event = OpenPositionEvent {
-            timestamp,
-            position_config: *position_config,
-            collateral_price: agg_price::price_of(collateral_price),
-            index_price: agg_price::price_of(index_price),
-            open_amount,
-            open_fee_value,
-            reserved_amount,
-            collateral_amount: position::collateral_amount(&position),
+        let collateral_amount = position::collateral_amount(&position);
+        let result = OpenPositionResult {
+            position,
+            rebate,
+            event: OpenPositionSuccessEvent {
+                timestamp,
+                position_config: *position_config,
+                collateral_price: agg_price::price_of(collateral_price),
+                index_price: agg_price::price_of(index_price),
+                open_amount,
+                open_fee_value,
+                reserve_amount,
+                collateral_amount,
+            },
         };
+        (code, option::some(result), option::none())
+    }
+
+    public(friend) fun unwrap_open_position_result<C>(res: OpenPositionResult<C>): (
+        Position<C>,
+        Balance<C>,
+        OpenPositionSuccessEvent,
+    ) {
+        let OpenPositionResult {
+            position,
+            rebate,
+            event,
+        } = res;
 
         (position, rebate, event)
+    }
+
+    public(friend) fun decrease_position<C>(
+        vault: &mut Vault<C>,
+        symbol: &mut Symbol,
+        position: &mut Position<C>,
+        reserving_fee_model: &ReservingFeeModel,
+        funding_fee_model: &FundingFeeModel,
+        collateral_price: &AggPrice,
+        index_price: &AggPrice,
+        rebate_rate: Rate,
+        long: bool,
+        decrease_amount: u64,
+        lp_supply_amount: Decimal,
+        timestamp: u64,
+    ): (u64, Option<DecreasePositionResult<C>>, Option<DecreasePositionFailedEvent>) {
+        // Pool errors are no need to be catched
+        assert!(vault.enabled, ERR_VAULT_DISABLED);
+        assert!(symbol.decrease_enabled, ERR_DECREASE_DISABLED);
+        assert!(
+            object::id(reserving_fee_model) == vault.reserving_fee_model,
+            ERR_MISMATCHED_RESERVING_FEE_MODEL,
+        );
+        assert!(
+            object::id(funding_fee_model) == symbol.funding_fee_model,
+            ERR_MISMATCHED_FUNDING_FEE_MODEL,
+        );
+
+        // refresh vault
+        let supply_amount = vault_supply_amount(vault);
+        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
+        // refresh symbol
+        let delta_size = symbol_delta_size(symbol, index_price, long);
+        refresh_symbol(
+            symbol,
+            funding_fee_model,
+            delta_size,
+            lp_supply_amount,
+            timestamp,
+        );
+
+        // decrease position
+        let (code, result) = position::decrease_position(
+            position,
+            collateral_price,
+            index_price,
+            long,
+            decrease_amount,
+            vault.acc_reserving_rate,
+            symbol.acc_funding_rate,
+            timestamp,
+        );
+        if (code > 0) {
+            option::destroy_none(result);
+
+            let event = DecreasePositionFailedEvent {
+                timestamp,
+                collateral_price: agg_price::price_of(collateral_price),
+                index_price: agg_price::price_of(index_price),
+                decrease_amount,
+                code,
+            };
+            return (code, option::none(), option::some(event))
+        };
+
+        let (
+            closed,
+            has_profit,
+            settled_amount,
+            decreased_reserved_amount,
+            decrease_size,
+            reserving_fee_amount,
+            decrease_fee_value,
+            reserving_fee_value,
+            funding_fee_value,
+            to_vault,
+            to_trader,
+        ) = position::unwrap_decrease_position_result(option::destroy_some(result));
+
+        // compute rebate
+        let rebate_value = decimal::mul_with_rate(decrease_fee_value, rebate_rate);
+        let rebate = balance::split(
+            &mut to_vault,
+            decimal::floor_u64(agg_price::value_to_coins(collateral_price, rebate_value)),
+        );
+
+        // update vault
+        vault.reserved_amount = vault.reserved_amount - decreased_reserved_amount;
+        vault.unrealised_reserving_fee_amount = decimal::sub(
+            vault.unrealised_reserving_fee_amount,
+            reserving_fee_amount,
+        );
+        let _ = balance::join(&mut vault.liquidity, to_vault);
+
+        // update symbol
+        symbol.opening_size = decimal::sub(symbol.opening_size, decrease_size);
+        symbol.opening_amount = symbol.opening_amount - decrease_amount;
+        symbol.unrealised_funding_fee_value = sdecimal::sub(
+            symbol.unrealised_funding_fee_value,
+            funding_fee_value,
+        );
+        symbol.realised_pnl = sdecimal::add(
+            symbol.realised_pnl,
+            sdecimal::sub_with_decimal(
+                sdecimal::from_decimal(
+                    !has_profit,
+                    agg_price::coins_to_value(collateral_price, settled_amount),
+                ),
+                // exclude: decrease fee - rebate + reserving fee
+                decimal::add(
+                    decimal::sub(decrease_fee_value, rebate_value),
+                    reserving_fee_value,
+                ),
+            ),
+        );
+
+        let result = DecreasePositionResult {
+            to_trader,
+            rebate,
+            event: DecreasePositionSuccessEvent {
+                timestamp,
+                collateral_price: agg_price::price_of(collateral_price),
+                index_price: agg_price::price_of(index_price),
+                decrease_amount,
+                decrease_fee_value,
+                reserving_fee_value,
+                funding_fee_value,
+                closed,
+                has_profit,
+                settled_amount,
+            },
+        };
+        (code, option::some(result), option::none())
+    }
+
+    public(friend) fun unwrap_decrease_position_result<C>(res: DecreasePositionResult<C>): (
+        Balance<C>,
+        Balance<C>,
+        DecreasePositionSuccessEvent,
+    ) {
+        let DecreasePositionResult {
+            to_trader,
+            rebate,
+            event,
+        } = res;
+
+        (to_trader, rebate, event)
     }
 
     public(friend) fun decrease_reserved_from_position<C>(
@@ -563,234 +766,10 @@ module abex_core::pool {
         (redeem, event)
     }
 
-    public(friend) fun decrease_position<C>(
-        vault: &mut Vault<C>,
-        symbol: &mut Symbol,
-        position: &mut Position<C>,
-        reserving_fee_model: &ReservingFeeModel,
-        funding_fee_model: &FundingFeeModel,
-        collateral_price: &AggPrice,
-        index_price: &AggPrice,
-        rebate_rate: Rate,
-        long: bool,
-        decrease_amount: u64,
-        lp_supply_amount: Decimal,
-        timestamp: u64,
-    ): (Balance<C>, Balance<C>, DecreasePositionEvent) {
-        assert!(vault.enabled, ERR_VAULT_DISABLED);
-        assert!(symbol.decrease_enabled, ERR_DECREASE_DISABLED);
-        assert!(
-            object::id(reserving_fee_model) == vault.reserving_fee_model,
-            ERR_MISMATCHED_RESERVING_FEE_MODEL,
-        );
-        assert!(
-            object::id(funding_fee_model) == symbol.funding_fee_model,
-            ERR_MISMATCHED_FUNDING_FEE_MODEL,
-        );
-
-        // refresh vault
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
-        // refresh symbol
-        let delta_size = symbol_delta_size(symbol, index_price, long);
-        refresh_symbol(
-            symbol,
-            funding_fee_model,
-            delta_size,
-            lp_supply_amount,
-            timestamp,
-        );
-
-        // close position
-        let (
-            has_profit,
-            settled_amount,
-            decreased_reserved_amount,
-            decrease_size,
-            reserving_fee_amount,
-            decrease_fee_value,
-            reserving_fee_value,
-            funding_fee_value,
-            to_vault,
-            to_trader,
-        ) = position::decrease_position(
-            position,
-            collateral_price,
-            index_price,
-            long,
-            decrease_amount,
-            vault.acc_reserving_rate,
-            symbol.acc_funding_rate,
-            timestamp,
-        );
-
-        // compute rebate
-        let rebate_value = decimal::mul_with_rate(decrease_fee_value, rebate_rate);
-        let rebate = balance::split(
-            &mut to_vault,
-            decimal::floor_u64(agg_price::value_to_coins(collateral_price, rebate_value)),
-        );
-
-        // update vault
-        vault.reserved_amount = vault.reserved_amount - decreased_reserved_amount;
-        vault.unrealised_reserving_fee_amount = decimal::sub(
-            vault.unrealised_reserving_fee_amount,
-            reserving_fee_amount,
-        );
-        let _ = balance::join(&mut vault.liquidity, to_vault);
-
-        // update symbol
-        symbol.opening_size = decimal::sub(symbol.opening_size, decrease_size);
-        symbol.opening_amount = symbol.opening_amount - decrease_amount;
-        symbol.unrealised_funding_fee_value = sdecimal::sub(
-            symbol.unrealised_funding_fee_value,
-            funding_fee_value,
-        );
-        symbol.realised_pnl = sdecimal::add(
-            symbol.realised_pnl,
-            sdecimal::sub_with_decimal(
-                sdecimal::from_decimal(
-                    !has_profit,
-                    agg_price::coins_to_value(collateral_price, settled_amount),
-                ),
-                // exclude: decrease fee - rebate + reserving fee
-                decimal::add(
-                    decimal::sub(decrease_fee_value, rebate_value),
-                    reserving_fee_value,
-                ),
-            ),
-        );
-
-        let event = DecreasePositionEvent {
-            timestamp,
-            collateral_price: agg_price::price_of(collateral_price),
-            index_price: agg_price::price_of(index_price),
-            decrease_amount,
-            decrease_fee_value,
-            reserving_fee_value,
-            funding_fee_value,
-            has_profit,
-            settled_amount,
-        };
-
-        (to_trader, rebate, event)
-    }
-
-    public(friend) fun close_position<C>(
-        vault: &mut Vault<C>,
-        symbol: &mut Symbol,
-        position: Position<C>,
-        reserving_fee_model: &ReservingFeeModel,
-        funding_fee_model: &FundingFeeModel,
-        collateral_price: &AggPrice,
-        index_price: &AggPrice,
-        rebate_rate: Rate,
-        long: bool,
-        lp_supply_amount: Decimal,
-        timestamp: u64,
-    ): (bool, u64, Balance<C>, Balance<C>, ClosePositionEvent) {
-        assert!(vault.enabled, ERR_VAULT_DISABLED);
-        assert!(symbol.decrease_enabled, ERR_DECREASE_DISABLED);
-        assert!(
-            object::id(reserving_fee_model) == vault.reserving_fee_model,
-            ERR_MISMATCHED_RESERVING_FEE_MODEL,
-        );
-        assert!(
-            object::id(funding_fee_model) == symbol.funding_fee_model,
-            ERR_MISMATCHED_FUNDING_FEE_MODEL,
-        );
-
-        // refresh vault
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
-        // refresh symbol
-        let delta_size = symbol_delta_size(symbol, index_price, long);
-        refresh_symbol(
-            symbol,
-            funding_fee_model,
-            delta_size,
-            lp_supply_amount,
-            timestamp,
-        );
-
-        // close position
-        let (
-            has_profit,
-            settled_amount,
-            position_amount,
-            reserved_amount,
-            position_size,
-            reserving_fee_amount,
-            close_fee_value,
-            reserving_fee_value,
-            funding_fee_value,
-            to_vault,
-            to_trader,
-        ) = position::close_position(
-            position,
-            collateral_price,
-            index_price,
-            long,
-            vault.acc_reserving_rate,
-            symbol.acc_funding_rate,
-            timestamp,
-        );
-
-        // compute rebate
-        let rebate_value = decimal::mul_with_rate(close_fee_value, rebate_rate);
-        let rebate = balance::split(
-            &mut to_vault,
-            decimal::floor_u64(agg_price::value_to_coins(collateral_price, rebate_value)),
-        );
-
-        // update vault
-        vault.reserved_amount = vault.reserved_amount - reserved_amount;
-        vault.unrealised_reserving_fee_amount = decimal::sub(
-            vault.unrealised_reserving_fee_amount,
-            reserving_fee_amount,
-        );
-        let _ = balance::join(&mut vault.liquidity, to_vault);
-
-        // update symbol
-        symbol.opening_size = decimal::sub(symbol.opening_size, position_size);
-        symbol.opening_amount = symbol.opening_amount - position_amount;
-        symbol.unrealised_funding_fee_value = sdecimal::sub(
-            symbol.unrealised_funding_fee_value,
-            funding_fee_value,
-        );
-        symbol.realised_pnl = sdecimal::add(
-            symbol.realised_pnl,
-            sdecimal::sub_with_decimal(
-                sdecimal::from_decimal(
-                    !has_profit,
-                    agg_price::coins_to_value(collateral_price, settled_amount),
-                ),
-                // exclude: close fee - rebate + reserving fee
-                decimal::add(
-                    decimal::sub(close_fee_value, rebate_value),
-                    reserving_fee_value,
-                ),
-            ),
-        );
-
-        let event = ClosePositionEvent {
-            timestamp,
-            collateral_price: agg_price::price_of(collateral_price),
-            index_price: agg_price::price_of(index_price),
-            close_fee_value,
-            reserving_fee_value,
-            funding_fee_value,
-            has_profit,
-            settled_amount,
-        };
-
-        (has_profit, settled_amount, to_trader, rebate, event)
-    }
-
     public(friend) fun liquidate_position<C>(
         vault: &mut Vault<C>,
         symbol: &mut Symbol,
-        position: Position<C>,
+        position: &mut Position<C>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
         collateral_price: &AggPrice,

@@ -15,6 +15,7 @@
       "id": "0x3780e52b27fd7d6c944c0bc4317ba72216ce7aff6cf370eb72c57917854585a2",
       "version": "2560"
     },
+    "referrals_parent": "0x93599f87c04e095fd1fc71c310927140b65a157615932ec8639df4a8fab6ecef",
     "vaults_parent": "0x90a2991039ccb8ef321cab5899dcdd5832bc114b3b72111897777c5b3e7d0d10",
     "symbols_parent": "0xf771fbab8882dcad943a99ac114397a46f5366b9e8fbda1513f5bf3748e10d60",
     "positions_parent": "0x547483676a22405f33425eb8adc8594737ede8603968071e36d3b38a6e9044ac",
@@ -61,8 +62,7 @@
         "funding_fee_model": "0x340dcfc361eb749d894d6aa27f854b986819f1c1b06a0ff51246a9a9f7322644",
         "position_config": "0x288d5195180ec2da98a690d009a1bebd914bcb988242c736d6067861db01b663"
       }
-    },
-    "referrals_parent": "0x93599f87c04e095fd1fc71c310927140b65a157615932ec8639df4a8fab6ecef"
+    }
   },
   "pyth_feeder": {
     "package": "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44",
