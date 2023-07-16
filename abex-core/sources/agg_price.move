@@ -71,10 +71,10 @@ module abex_core::agg_price {
         let exp = pyth_price::get_expo(&price);
         let price = if (pyth_i64::get_is_negative(&exp)) {
             let exp = pyth_i64::get_magnitude_if_negative(&exp);
-            decimal::mul_with_u64(decimal::from_u64(value), pow(10, (exp as u8)))
+            decimal::div_by_u64(decimal::from_u64(value), pow(10, (exp as u8)))
         } else {
             let exp = pyth_i64::get_magnitude_if_positive(&exp);
-            decimal::div_by_u64(decimal::from_u64(value), pow(10, (exp as u8)))
+            decimal::mul_with_u64(decimal::from_u64(value), pow(10, (exp as u8)))
         };
 
         AggPrice { price, precision: config.precision}
