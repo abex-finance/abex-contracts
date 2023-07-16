@@ -158,7 +158,7 @@ module abex_core::market {
         burn_amount: u64,
     }
 
-    struct Swapped<phantom I, phantom D> has copy, drop {
+    struct Swapped<phantom S, phantom D> has copy, drop {
         swapper: address,
         source_price: Decimal,
         dest_price: Decimal,
@@ -210,32 +210,21 @@ module abex_core::market {
     const ERR_VAULTS_NOT_TOTALLY_HANDLED: u64 = 2;
     const ERR_SYMBOLS_NOT_TOTALLY_HANDLED: u64 = 3;
     const ERR_UNEXPECTED_MARKET_VALUE: u64 = 4;
-    const ERR_POSITION_STILL_EXISTS: u64 = 5;
-    const ERR_INVALID_DIRECTION: u64 = 6;
-    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 7;
+    const ERR_INVALID_DIRECTION: u64 = 5;
+    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 6;
+    const ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD: u64 = 7;
     const ERR_SWAPPING_SAME_COINS: u64 = 8;
-    const ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD: u64 = 9;
-    const ERR_INDEX_PRICE_EXCEED_THRESHOLD: u64 = 10;
-    const ERR_AMOUNT_OUT_TOO_LESS: u64 = 11;
-    const ERR_CAN_NOT_CREATE_ORDER: u64 = 12;
-    const ERR_UNMATCHED_ORDER_ID: u64 = 13;
-    const ERR_UNMATCHED_ORDER_OWNER: u64 = 14;
-    const ERR_INVALID_PROFIT_THRESHOLD: u64 = 14;
-    const ERR_INVALID_LOSS_THRESHOLD: u64 = 15;
-    const ERR_ORDER_ALREADY_EXECUTED: u64 = 16;
-    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 14;
-    const ERR_TAKE_PROFIT_NOT_TRIGGERED: u64 = 15;
-    const ERR_STOP_LOSS_NOT_TRIGGERED: u64 = 16;
+    const ERR_CAN_NOT_CREATE_ORDER: u64 = 9;
+    const ERR_UNMATCHED_ORDER_ID: u64 = 10;
+    const ERR_UNMATCHED_ORDER_OWNER: u64 = 11;
+    const ERR_INVALID_PROFIT_THRESHOLD: u64 = 12;
+    const ERR_INVALID_LOSS_THRESHOLD: u64 = 13;
+    const ERR_ORDER_ALREADY_EXECUTED: u64 = 14;
+    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 15;
+    const ERR_TAKE_PROFIT_NOT_TRIGGERED: u64 = 16;
+    const ERR_STOP_LOSS_NOT_TRIGGERED: u64 = 17;
 
     // === internal functions ===
-
-    fun truncate_decimal(value: Decimal): u64 {
-        // decimal's precision is 18, we need to truncate it to 6
-        let value = decimal::to_raw(value);
-        value = value / 1_000_000_000_000;
-
-        (value as u64)
-    }
 
     fun mint_lp<L>(market: &mut Market<L>, amount: u64): Balance<L> {
         balance::increase_supply(&mut market.lp_supply, amount)
@@ -1518,31 +1507,18 @@ module abex_core::market {
 
         let vault: &mut Vault<C> = bag::borrow_mut(&mut market.vaults, VaultName<C> {});
 
-        let deposit_value = pool::deposit(
+        let mint_amount = pool::deposit(
             vault,
             model,
             &price,
             coin::into_balance(deposit),
+            min_amount_out,
+            lp_supply_amount,
+            market_value,
             vault_value,
             total_vaults_value,
             total_weight,
         );
-        let mint_amount = if (lp_supply_amount == 0) {
-            assert!(decimal::is_zero(&market_value), ERR_UNEXPECTED_MARKET_VALUE);
-            truncate_decimal(deposit_value)
-        } else {
-            assert!(!decimal::is_zero(&market_value), ERR_UNEXPECTED_MARKET_VALUE);
-            let exchange_rate = decimal::to_rate(
-                decimal::div(deposit_value, market_value)
-            );
-            decimal::floor_u64(
-                decimal::mul_with_rate(
-                    decimal::from_u64(lp_supply_amount),
-                    exchange_rate,
-                )
-            )
-        };
-        assert!(mint_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
 
         // mint to sender
         let minted = mint_lp(market, mint_amount);
@@ -1591,26 +1567,22 @@ module abex_core::market {
             &mut market.lp_supply,
             coin::into_balance(burn),
         );
-        let exchange_rate = decimal::to_rate(
-            decimal::div(
-                decimal::from_u64(burn_amount),
-                decimal::from_u64(lp_supply_amount),
-            )
-        );
-        let withdraw_value = decimal::mul_with_rate(market_value, exchange_rate);
 
         // withdraw to burner
         let withdraw = pool::withdraw(
             vault,
             model,
             &price,
-            withdraw_value,
+            burn_amount,
+            min_amount_out,
+            lp_supply_amount,
+            market_value,
             vault_value,
             total_vaults_value,
             total_weight,
         );
+
         let withdraw_amount = balance::value(&withdraw);
-        assert!(withdraw_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
         pay_from_balance(withdraw, burner, ctx);
 
         // emit withdrawn
@@ -1664,13 +1636,14 @@ module abex_core::market {
             bag::borrow_mut(&mut market.vaults, VaultName<D> {}),
             model,
             &dest_price,
+            min_amount_out,
             swap_value,
             dest_vault_value,
             total_vaults_value,
             total_weight,
         );
+
         let dest_amount = balance::value(&receiving);
-        assert!(dest_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
         pay_from_balance(receiving, swapper, ctx);
 
         // emit swapped

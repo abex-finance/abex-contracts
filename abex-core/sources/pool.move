@@ -136,6 +136,7 @@ module abex_core::pool {
     }
 
     // === Errors ===
+
     // vault errors
     const ERR_VAULT_DISABLED: u64 = 0;
     const ERR_INSUFFICIENT_SUPPLY: u64 = 1;
@@ -146,14 +147,23 @@ module abex_core::pool {
     const ERR_DECREASE_DISABLED: u64 = 5;
     const ERR_LIQUIDATE_DISABLED: u64 = 6;
     // swap errors
-    const ERR_SOURCE_EQUALS_TO_DEST: u64 = 7;
-    const ERR_INVALID_SWAP_AMOUNT: u64 = 8;
+    const ERR_INVALID_SWAP_AMOUNT: u64 = 7;
     // deposit/withdraw errors
-    const ERR_INVALID_DEPOSIT: u64 = 9;
-    const ERR_INVALID_WITHDRAW_AMOUNT: u64 = 10;
+    const ERR_INVALID_DEPOSIT_AMOUNT: u64 = 8;
+    const ERR_INVALID_WITHDRAW_AMOUNT: u64 = 9;
+    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 10;
+    const ERR_AMOUNT_OUT_TOO_LESS: u64 = 11;
     // model errors
-    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 11;
-    const ERR_MISMATCHED_FUNDING_FEE_MODEL: u64 = 12;
+    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 12;
+    const ERR_MISMATCHED_FUNDING_FEE_MODEL: u64 = 13;
+
+    fun truncate_decimal(value: Decimal): u64 {
+        // decimal's precision is 18, we need to truncate it to 6
+        let value = decimal::to_raw(value);
+        value = value / 1_000_000_000_000;
+
+        (value as u64)
+    }
 
     fun refresh_vault<C>(
         vault: &mut Vault<C>,
@@ -240,19 +250,21 @@ module abex_core::pool {
         vec_set::remove(&mut config.supported_collaterals, &type_name::get<C>());
     }
 
-    // TODO: add event here
     public(friend) fun deposit<C>(
         vault: &mut Vault<C>,
         fee_model: &RebaseFeeModel,
         price: &AggPrice,
         deposit: Balance<C>,
+        min_amount_out: u64,
+        lp_supply_amount: u64,
+        market_value: Decimal,
         vault_value: Decimal,
         total_vaults_value: Decimal,
         total_weight: Decimal,
-    ): Decimal {
+    ): u64 {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         let deposit_amount = balance::value(&deposit);
-        assert!(deposit_amount > 0, ERR_INVALID_DEPOSIT);
+        assert!(deposit_amount > 0, ERR_INVALID_DEPOSIT_AMOUNT);
         let deposit_value = agg_price::coins_to_value(price, deposit_amount);
 
         // handle fee
@@ -271,19 +283,49 @@ module abex_core::pool {
 
         balance::join(&mut vault.liquidity, deposit);
 
-        deposit_value
+        // handle mint
+        let mint_amount = if (lp_supply_amount == 0) {
+            assert!(decimal::is_zero(&market_value), ERR_UNEXPECTED_MARKET_VALUE);
+            truncate_decimal(deposit_value)
+        } else {
+            assert!(!decimal::is_zero(&market_value), ERR_UNEXPECTED_MARKET_VALUE);
+            let exchange_rate = decimal::to_rate(
+                decimal::div(deposit_value, market_value)
+            );
+            decimal::floor_u64(
+                decimal::mul_with_rate(
+                    decimal::from_u64(lp_supply_amount),
+                    exchange_rate,
+                )
+            )
+        };
+        assert!(mint_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
+
+        mint_amount
     }
 
     public(friend) fun withdraw<C>(
         vault: &mut Vault<C>,
         fee_model: &RebaseFeeModel,
         price: &AggPrice,
-        withdraw_value: Decimal,
+        burn_amount: u64,
+        min_amount_out: u64,
+        lp_supply_amount: u64,
+        market_value: Decimal,
         vault_value: Decimal,
         total_vaults_value: Decimal,
         total_weight: Decimal,
     ): Balance<C> {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
+        assert!(burn_amount > 0, ERR_INVALID_WITHDRAW_AMOUNT);
+
+        let exchange_rate = decimal::to_rate(
+            decimal::div(
+                decimal::from_u64(burn_amount),
+                decimal::from_u64(lp_supply_amount),
+            )
+        );
+        let withdraw_value = decimal::mul_with_rate(market_value, exchange_rate);
         assert!(
             decimal::lt(&withdraw_value, &total_vaults_value),
             ERR_INSUFFICIENT_SUPPLY,
@@ -311,7 +353,13 @@ module abex_core::pool {
             ERR_INSUFFICIENT_LIQUIDITY,
         );
         
-        balance::split(&mut vault.liquidity, withdraw_amount)
+        let withdraw = balance::split(&mut vault.liquidity, withdraw_amount);
+        assert!(
+            balance::value(&withdraw) >= min_amount_out,
+            ERR_AMOUNT_OUT_TOO_LESS,
+        );
+
+        withdraw
     }
 
     public(friend) fun swap_in<S>(
@@ -349,6 +397,7 @@ module abex_core::pool {
         dest_vault: &mut Vault<D>,
         model: &RebaseFeeModel,
         dest_price: &AggPrice,
+        min_amount_out: u64,
         swap_value: Decimal,
         dest_vault_value: Decimal,
         total_vaults_value: Decimal,
@@ -361,6 +410,7 @@ module abex_core::pool {
             decimal::lt(&swap_value, &dest_vault_value),
             ERR_INSUFFICIENT_SUPPLY,
         );
+
         let dest_fee_rate = compute_rebase_fee_rate(
             model,
             false,
@@ -376,6 +426,7 @@ module abex_core::pool {
         let dest_amount = decimal::floor_u64(
             agg_price::value_to_coins(dest_price, swap_value)
         );
+        assert!(dest_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
         assert!(
             dest_amount < balance::value(&dest_vault.liquidity),
             ERR_INSUFFICIENT_LIQUIDITY,

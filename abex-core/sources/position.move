@@ -28,8 +28,6 @@ module abex_core::position {
     const ERR_LIQUIDATION_TRIGGERED: u64 = 12;
     const ERR_LIQUIDATION_NOT_TRIGGERED: u64 = 13;
     const ERR_EXCEED_MAX_RESERVED: u64 = 14;
-    const ERR_INVALID_PROFIT_THRESHOLD: u64 = 15;
-    const ERR_INVALID_LOSS_THRESHOLD: u64 = 16;
 
     // === Storage ===
 
@@ -127,21 +125,21 @@ module abex_core::position {
         timestamp: u64,
     ): (u64, Option<OpenPositionResult<C>>) {
         if (balance::value(collateral) == 0) {
-            return (ERR_INVALID_PLEDGE, option::none());
+            return (ERR_INVALID_PLEDGE, option::none())
         };
         if (open_amount == 0) {
-            return (ERR_INVALID_OPEN_AMOUNT, option::none());
+            return (ERR_INVALID_OPEN_AMOUNT, option::none())
         };
         if (
             balance::value(collateral) * config.max_reserved_multiplier < reserve_amount
         ) {
-            return (ERR_EXCEED_MAX_RESERVED, option::none());
+            return (ERR_EXCEED_MAX_RESERVED, option::none())
         };
 
         // compute position size
         let open_size = agg_price::coins_to_value(index_price, open_amount);
         if (decimal::lt(&open_size, &config.min_size)) {
-            return (ERR_POSITION_SIZE_TOO_LESS, option::none());
+            return (ERR_POSITION_SIZE_TOO_LESS, option::none())
         };
 
         // compute fee
@@ -149,7 +147,7 @@ module abex_core::position {
         let open_fee_amount_dec = agg_price::value_to_coins(collateral_price, open_fee_value);
         let open_fee_amount = decimal::ceil_u64(open_fee_amount_dec);
         if (open_fee_amount >= balance::value(collateral)) {
-            return (ERR_INSUFFICIENT_COLLATERAL, option::none());
+            return (ERR_INSUFFICIENT_COLLATERAL, option::none())
         };
 
         // validate leverage
@@ -161,7 +159,7 @@ module abex_core::position {
             index_price,
         );
         if (!ok) {
-            return (ERR_LEVERAGE_TOO_LARGE, option::none());
+            return (ERR_LEVERAGE_TOO_LARGE, option::none())
         };
 
         // take away open fee
@@ -221,12 +219,12 @@ module abex_core::position {
         timestamp: u64,
     ): (u64, Option<DecreasePositionResult<C>>) {
         if (position.closed) {
-            return (ERR_ALREADY_CLOSED, option::none());
+            return (ERR_ALREADY_CLOSED, option::none())
         };
         if (
             decrease_amount == 0 || decrease_amount > position.position_amount
         ) {
-            return (ERR_INVALID_DECREASE_AMOUNT, option::none());
+            return (ERR_INVALID_DECREASE_AMOUNT, option::none())
         };
 
         let decrease_size = decimal::div_by_u64(
@@ -245,7 +243,7 @@ module abex_core::position {
         // check holding duration
         let ok = check_holding_duration(position, &delta_size, timestamp);
         if (!ok) {
-            return (ERR_HOLDING_DURATION_TOO_SHORT, option::none());
+            return (ERR_HOLDING_DURATION_TOO_SHORT, option::none())
         };
 
         // compute fee
@@ -303,7 +301,7 @@ module abex_core::position {
         // should check the position if not closed
         if (!closed) {
             if (decimal::lt(&position_size, &position.config.min_size)) {
-                return (ERR_POSITION_SIZE_TOO_LESS, option::none());
+                return (ERR_POSITION_SIZE_TOO_LESS, option::none())
             };
 
             let collateral_amount = if (has_profit) {
@@ -321,7 +319,7 @@ module abex_core::position {
                 index_price,
             );
             if (!ok) {
-                return (ERR_LEVERAGE_TOO_LARGE, option::none());
+                return (ERR_LEVERAGE_TOO_LARGE, option::none())
             };
 
             // check liquidation
@@ -332,7 +330,7 @@ module abex_core::position {
                 collateral_price,
             );
             if (ok) {
-                return (ERR_LIQUIDATION_TRIGGERED, option::none());
+                return (ERR_LIQUIDATION_TRIGGERED, option::none())
             };
         };
 
