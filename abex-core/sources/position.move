@@ -13,7 +13,8 @@ module abex_core::position {
     friend abex_core::pool;
     friend abex_core::market;
 
-    const OK: u64 = 0;
+    const OK: u64 = 0x0;
+
     const ERR_ALREADY_CLOSED: u64 = 1;
     const ERR_POSITION_NOT_CLOSED: u64 = 2;
     const ERR_INVALID_PLEDGE: u64 = 3;
@@ -612,16 +613,7 @@ module abex_core::position {
         balance::destroy_zero(collateral);
     }
 
-    // TODO: finish this
-    // public(friend) fun emergency_close_position<C>(
-    //     position: Position<C>,
-    //     reserving_rate: Rate,
-    // ): (Balance<C>, Balance<C>) {
-    //     // update dynamic fee
-    //     position.reserving_fee_amount = reserving_fee_amount(&position, reserving_rate);
-    //     position.last_reserving_rate = reserving_rate;
-
-    // }
+    // TODO: implement emergency close position
 
     /// public read functions
 

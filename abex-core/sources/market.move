@@ -204,25 +204,27 @@ module abex_core::market {
     }
 
     // === Errors ===
-
-    const ERR_VAULT_ALREADY_HANDLED: u64 = 0;
-    const ERR_SYMBOL_ALREADY_HANDLED: u64 = 1;
-    const ERR_VAULTS_NOT_TOTALLY_HANDLED: u64 = 2;
-    const ERR_SYMBOLS_NOT_TOTALLY_HANDLED: u64 = 3;
-    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 4;
-    const ERR_INVALID_DIRECTION: u64 = 5;
-    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 6;
-    const ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD: u64 = 7;
-    const ERR_SWAPPING_SAME_COINS: u64 = 8;
-    const ERR_CAN_NOT_CREATE_ORDER: u64 = 9;
-    const ERR_UNMATCHED_ORDER_ID: u64 = 10;
-    const ERR_UNMATCHED_ORDER_OWNER: u64 = 11;
-    const ERR_INVALID_PROFIT_THRESHOLD: u64 = 12;
-    const ERR_INVALID_LOSS_THRESHOLD: u64 = 13;
-    const ERR_ORDER_ALREADY_EXECUTED: u64 = 14;
-    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 15;
-    const ERR_TAKE_PROFIT_NOT_TRIGGERED: u64 = 16;
-    const ERR_STOP_LOSS_NOT_TRIGGERED: u64 = 17;
+    // perpetual trading errors
+    const ERR_INVALID_DIRECTION: u64 = 1;
+    const ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD: u64 = 2;
+    const ERR_CAN_NOT_CREATE_LIMIT_ORDER: u64 = 3;
+    const ERR_CAN_NOT_TRADE_IMMEDIATELY: u64 = 4;
+    const ERR_UNMATCHED_ORDER_ID: u64 = 5;
+    const ERR_UNMATCHED_ORDER_OWNER: u64 = 6;
+    const ERR_INVALID_PROFIT_THRESHOLD: u64 = 7;
+    const ERR_INVALID_LOSS_THRESHOLD: u64 = 8;
+    const ERR_ORDER_ALREADY_EXECUTED: u64 = 9;
+    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 10;
+    const ERR_TAKE_PROFIT_NOT_TRIGGERED: u64 = 11;
+    const ERR_STOP_LOSS_NOT_TRIGGERED: u64 = 12;
+    // deposit, withdraw and swap errors
+    const ERR_VAULT_ALREADY_HANDLED: u64 = 13;
+    const ERR_SYMBOL_ALREADY_HANDLED: u64 = 14;
+    const ERR_VAULTS_NOT_TOTALLY_HANDLED: u64 = 15;
+    const ERR_SYMBOLS_NOT_TOTALLY_HANDLED: u64 = 16;
+    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 17;
+    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 18;
+    const ERR_SWAPPING_SAME_COINS: u64 = 19;
 
     // === internal functions ===
 
@@ -508,6 +510,8 @@ module abex_core::market {
         };
 
         if (is_limited) {
+            assert!(!allow_trade, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
+
             let order = OpenPositionOrder<C, I, D, F> {
                 id: object::new(ctx),
                 executed: false,
@@ -532,7 +536,7 @@ module abex_core::market {
             // emit order created
             event::emit(OrderCreated { order_id });
         } else {
-            assert!(allow_trade, ERR_CAN_NOT_CREATE_ORDER);
+            assert!(allow_trade, ERR_CAN_NOT_TRADE_IMMEDIATELY);
 
             let vault: &mut Vault<C> = bag::borrow_mut(
                 &mut market.vaults,
@@ -657,11 +661,9 @@ module abex_core::market {
             )
         };
 
-        if (!allow_trade) {
-            assert!(is_limited, ERR_CAN_NOT_CREATE_ORDER);
-        };
-
         if (is_limited) {
+            assert!(!allow_trade, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
+
             let order = DecreasePositionOrder<C, I, D, F> {
                 id: object::new(ctx),
                 executed: false,
@@ -683,7 +685,7 @@ module abex_core::market {
             // emit order created
             event::emit(OrderCreated { order_id });
         } else {
-            assert!(allow_trade, ERR_CAN_NOT_CREATE_ORDER);
+            assert!(allow_trade, ERR_CAN_NOT_TRADE_IMMEDIATELY);
 
             let vault: &mut Vault<C> = bag::borrow_mut(
                 &mut market.vaults,

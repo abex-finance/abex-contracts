@@ -138,24 +138,23 @@ module abex_core::pool {
     // === Errors ===
 
     // vault errors
-    const ERR_VAULT_DISABLED: u64 = 0;
-    const ERR_INSUFFICIENT_SUPPLY: u64 = 1;
-    const ERR_INSUFFICIENT_LIQUIDITY: u64 = 2;
+    const ERR_VAULT_DISABLED: u64 = 1;
+    const ERR_INSUFFICIENT_SUPPLY: u64 = 2;
+    const ERR_INSUFFICIENT_LIQUIDITY: u64 = 3;
     // symbol errors
-    const ERR_COLLATERAL_NOT_SUPPORTED: u64 = 3;
-    const ERR_OPEN_DISABLED: u64 = 4;
-    const ERR_DECREASE_DISABLED: u64 = 5;
-    const ERR_LIQUIDATE_DISABLED: u64 = 6;
-    // swap errors
-    const ERR_INVALID_SWAP_AMOUNT: u64 = 7;
-    // deposit/withdraw errors
-    const ERR_INVALID_DEPOSIT_AMOUNT: u64 = 8;
-    const ERR_INVALID_WITHDRAW_AMOUNT: u64 = 9;
-    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 10;
-    const ERR_AMOUNT_OUT_TOO_LESS: u64 = 11;
+    const ERR_COLLATERAL_NOT_SUPPORTED: u64 = 4;
+    const ERR_OPEN_DISABLED: u64 = 5;
+    const ERR_DECREASE_DISABLED: u64 = 6;
+    const ERR_LIQUIDATE_DISABLED: u64 = 7;
+    // deposit, withdraw or swap errors
+    const ERR_INVALID_SWAP_AMOUNT: u64 = 8;
+    const ERR_INVALID_DEPOSIT_AMOUNT: u64 = 9;
+    const ERR_INVALID_WITHDRAW_AMOUNT: u64 = 10;
+    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 11;
+    const ERR_AMOUNT_OUT_TOO_LESS: u64 = 12;
     // model errors
-    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 12;
-    const ERR_MISMATCHED_FUNDING_FEE_MODEL: u64 = 13;
+    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 13;
+    const ERR_MISMATCHED_FUNDING_FEE_MODEL: u64 = 14;
 
     fun truncate_decimal(value: Decimal): u64 {
         // decimal's precision is 18, we need to truncate it to 6
