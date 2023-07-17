@@ -149,7 +149,7 @@ module abex_core::pool {
     // deposit, withdraw or swap errors
     const ERR_INVALID_SWAP_AMOUNT: u64 = 8;
     const ERR_INVALID_DEPOSIT_AMOUNT: u64 = 9;
-    const ERR_INVALID_WITHDRAW_AMOUNT: u64 = 10;
+    const ERR_INVALID_BURN_AMOUNT: u64 = 10;
     const ERR_UNEXPECTED_MARKET_VALUE: u64 = 11;
     const ERR_AMOUNT_OUT_TOO_LESS: u64 = 12;
     // model errors
@@ -316,7 +316,7 @@ module abex_core::pool {
         total_weight: Decimal,
     ): Balance<C> {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
-        assert!(burn_amount > 0, ERR_INVALID_WITHDRAW_AMOUNT);
+        assert!(burn_amount > 0, ERR_INVALID_BURN_AMOUNT);
 
         let exchange_rate = decimal::to_rate(
             decimal::div(

@@ -25,9 +25,10 @@ module abex_core::agg_price {
         feeder: ID,
     }
 
-    const ERR_INVALID_PRICE_FEEDER: u64 = 0;
-    const ERR_PRICE_STALED: u64 = 1;
-    const ERR_EXCEED_PRICE_CONFIDENCE: u64 = 2;
+    const ERR_INVALID_PRICE_FEEDER: u64 = 1;
+    const ERR_PRICE_STALED: u64 = 2;
+    const ERR_EXCEED_PRICE_CONFIDENCE: u64 = 3;
+    const ERR_INVALID_PRICE_VALUE: u64 = 4;
 
     public(friend) fun new_agg_price_config<T>(
         max_interval: u64,
@@ -67,6 +68,8 @@ module abex_core::agg_price {
         let value = pyth_price::get_price(&price);
         // price can not be negative
         let value = pyth_i64::get_magnitude_if_positive(&value);
+        // price can not be zero
+        assert!(value > 0, ERR_INVALID_PRICE_VALUE);
 
         let exp = pyth_price::get_expo(&price);
         let price = if (pyth_i64::get_is_negative(&exp)) {
