@@ -463,7 +463,7 @@ module abex_core::market {
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        position_config: &WrappedPositionConfig<C, D>,
+        position_config: &WrappedPositionConfig<I, D>,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         collateral: Coin<C>,
