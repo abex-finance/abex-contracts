@@ -1,66 +1,66 @@
 {
   "abex_core": {
-    "package": "0xdfa870297aee02254573991d4d76cf3769a5e3e435fa3ff8efb91bdd9881b524",
-    "upgrade_cap": "0xf542adb0d4d271581eed81273558b43e5f838da47973c4def1ae766a40a043a7",
-    "admin_cap": "0x1373c6b92e3cc38dfa52d7d2a7a33d696cb073c1a0b1bd537d46493fea5d0dda",
+    "package": "0x17b2689a9e04e2601de079b2b78890db28992b2d1b8bf802aa2c56d5891401c5",
+    "upgrade_cap": "0xd7ee8c42008f392e0d8a646f9e60b4c3c6c8081df8b21b6c23e3c78b308a82cb",
+    "admin_cap": "0xc85d10d21f42287fcb4e1d947619798f5e714e5d64cf2b6ac79a1e60697d07dd",
     "market": {
-      "id": "0xbeab3fdc56065e12013bcbf23d68f9513e2a4f1b5fdf852b3d575b34ad9b1fa5",
-      "version": "5840787"
+      "id": "0x0c168d0b7e31da7e0ddc8728ae28342a4b5edb658348014c2d5941783b4f4b5e",
+      "version": "7016660"
     },
     "alp_metadata": {
-      "id": "0x323bec729f7576d2f80e9466be938992f3e43af50236cdc351404e0ce12ec31e",
-      "version": "5840787"
+      "id": "0xc3c0218eab5d9c0b83ec6f73387b08eaa09e2bbc5302653607064a74fd98c05f",
+      "version": "7016660"
     },
     "rebase_fee_model": {
-      "id": "0x0f09864d5158d8ca7da32d54efbeda83feff8825e5a2a6b2e3a072f698c774fc",
-      "version": "5840787"
+      "id": "0x0f9ef08a857d4e75f5e8ecac8089f24f71572e67fcc6fbff16779f3b300ad7b5",
+      "version": "7016660"
     },
-    "vaults_parent": "0xba1c531f66c61cab70aa42603c9cc3baa6adeb37e41c8473c5548630c1291586",
-    "symbols_parent": "0xe337965cde8ae8fa2d524d1b07a815e5efa3a8bb2dddd10540eafa522a0bad35",
-    "positions_parent": "0x2bd22973a9daa815955c5d9eeb6323ad8a572dc4f81cc4d56adfe09d4dc80012",
+    "vaults_parent": "0xef2c4f872797c59e3b1e7d9d026455758f56189681c4dd38348798e784b9ee43",
+    "symbols_parent": "0xa4177d7da4beb4244328a56facbb3777e951a479c3b86183aaf519551ab15eeb",
+    "positions_parent": "0xe475af8947fe2557a463e3ecc1853e4d2bf7b3e82758615579656378bde4bf6c",
     "vaults": {
       "fsui": {
         "weight": "1000000000000000000",
-        "reserving_fee_model": "0xe38449fb579ea430f1a5f16d7fa99882071f6eede814480fff845edd9720f419"
+        "reserving_fee_model": "0x20304d4ec7c65169ab7febde5f42863c27d009c8c6219aa9e5cbc8657c38c56f"
       },
       "usdt": {
         "weight": "1000000000000000000",
-        "reserving_fee_model": "0x2de26b569c7bd17c673b9ccce6a56b320f6cfd01ba326bc0fe573b602cc94551"
+        "reserving_fee_model": "0x90267a2fafcd16cb5dc2cf1ad080680fa259658ed79c7677d922e7567a82091c"
       }
     },
     "symbols": {
-      "long_fsui": {
-        "supported_collaterals": [
-          "fsui",
-          "usdt"
-        ],
-        "funding_fee_model": "0x09b7bd95a72e3214093df9ca04cbef5a886704847ef631c8e12ca22111ecdac1",
-        "position_config": "0xfa1ae66f9a7031e9ae41b823b6cb754d14baec3e2038c5da8ce00e41abbe795c"
-      },
-      "short_fsui": {
-        "supported_collaterals": [
-          "usdt"
-        ],
-        "funding_fee_model": "0x82c3d1cc8ff76030e8760aa1492714100f73094076dc89e992a3546076e48fed",
-        "position_config": "0x99f73f6439b38e0f42f528086689fccd17a1d23bcfb99e2ae2bba6899c5f8cb0"
-      },
       "long_btc": {
         "supported_collaterals": [
           "fsui",
           "usdt"
         ],
-        "funding_fee_model": "0x992b9cac5f419fd5a05eeaef296baba727a2674c946d53da840d231553222ca3",
-        "position_config": "0xc951918a87f73f714d4a9c2c7b09c02cde68fb97c132731e8427f90db4a8e2bd"
+        "funding_fee_model": "0xd4280ad85e348220646d49725b0d5f6cc173884b42fb907bd44e4a0dc6776a20",
+        "position_config": "0x2e9426c71fdc5120736b16ec63a29c465cccf8bdda4487a2a9535add7b283dcc"
       },
       "short_btc": {
         "supported_collaterals": [
           "usdt"
         ],
-        "funding_fee_model": "0xf1f38d44c715a38b8a32e38eeea1d31eaecdfb706a96fe649c9f4025638aa9bc",
-        "position_config": "0xf562dfa32f8e869c0c899a1b8b1827c26b0bd8f45394ca3871896d8c3ff39391"
+        "funding_fee_model": "0x8f70510b7fa4ec3b3ea3067165d3aed9200ae6c333b42356136307d5b62a5f12",
+        "position_config": "0xa4ee3623f38dc3030cd2900c56bed29b31824480d53cd8d7b828cbfc57ff6800"
+      },
+      "long_fsui": {
+        "supported_collaterals": [
+          "fsui",
+          "usdt"
+        ],
+        "funding_fee_model": "0x8a98a6010551070f16759c7e93b36b196f290ad5a9d3f4b62d99d43c8de3ae6f",
+        "position_config": "0x5803e0bf7bc3995e8ea854d9f34beb2f11ee5b3e4f6777c6e389cee208131855"
+      },
+      "short_fsui": {
+        "supported_collaterals": [
+          "usdt"
+        ],
+        "funding_fee_model": "0x3c90b02b8921cbf8cf1e8d8c79419ba9602902f9be4129572776c040a1b6b7c7",
+        "position_config": "0xcd8fe358a84e0d4296b8df2d6188166753310d76fcc870985ddb281bfdbcf077"
       }
     },
-    "referrals_parent": "0xf1cc857ddd4ce7b38abe3c9828498b94449c88a9998a0a435547f070a1813752"
+    "referrals_parent": "0x9413b2be90212db40e6d2855315bcff28fc959746a2e879feed60071a1a26ef4"
   },
   "pyth_feeder": {
     "package": "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44",
