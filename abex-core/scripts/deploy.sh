@@ -12,9 +12,17 @@ fi
 deployments="../../deployments-$env_name.json"
 config="/root/.sui/sui_config/$env_name-client.yaml"
 
+pyth=`cat $deployments | jq -r ".pyth_feeder.package"`
+wormhole=`cat $deployments | jq -r ".pyth_feeder.wormhole.package"`
+
 # update Move.toml
-feeder=`sed -n 's/abex_feeder\s*=\s*\("0x[0-9a-fA-F]\+"\)/\1/p' ../../abex-feeder/Move.toml`
-sed -i "s/\(abex_feeder\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1$feeder/" ../Move.toml
+sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$wormhole\"/" ../../vendor/wormhole/Move.toml
+sed -i "s/\(wormhole\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$wormhole\"/" ../../vendor/wormhole/Move.toml
+sed -i "s/\(wormhole\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$wormhole\"/" ../../vendor/pyth/Move.toml
+sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$pyth\"/" ../../vendor/pyth/Move.toml
+sed -i "s/\(pyth\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$pyth\"/" ../../vendor/pyth/Move.toml
+sed -i "s/\(pyth\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$pyth\"/" ../Move.toml
+sed -i 's/\(published-at\s*=\s*\)"0x[0-9a-fA-F]\+"/\1"0x0"/' ../Move.toml
 sed -i 's/\(abex_core\s*=\s*\)"0x[0-9a-fA-F]\+"/\1"0x0"/' ../Move.toml
 
 # deploy
@@ -33,7 +41,7 @@ if [ -n "$ok" ]; then
        # modify field ".abex_core.package" in $deployments
        json_content=`jq ".abex_core.package = \"$package\"" $deployments`
 
-       upgrade_cap=`echo "$deploy_log" | grep "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       upgrade_cap=`echo "$deploy_log" | grep "0x2::package::UpgradeCap" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.upgrade_cap" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.upgrade_cap = \"$upgrade_cap\""`
        
@@ -41,29 +49,45 @@ if [ -n "$ok" ]; then
        # modify field ".abex_core.upgrade_cap" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.admin_cap = \"$admin_cap\""`
        
-       market=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field ".abex_core.market" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.market = \"$market\""`
+       market_id=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.market.id" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.market.id = \"${market_id}\""`
 
-       alp_metadata=`echo "$deploy_log" | grep "0x0000000000000000000000000000000000000000000000000000000000000002::coin::CoinMetadata<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field ".abex_core.alp_metadata" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata = \"$alp_metadata\""`
+       market_version=`echo "$deploy_log" | grep "$package::market::Market<$package::alp::ALP>" -B 3 | grep initial_shared_version | awk -F 'Number\\(' '{print $2}' | awk -F '\\)' '{print $1}'`
+       # modify field ".abex_core.market.version" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.market.version = \"${market_version}\""`
 
-       fee_model=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field ".abex_core.rebase_fee_model" in $deployments
-       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model = \"$fee_model\""`
+       alp_metadata_id=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::alp::ALP>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.alp_metadata.id" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata.id = \"${alp_metadata_id}\""`
+
+       alp_metadata_version=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::alp::ALP>" -A 2 | grep version | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.alp_metadata.version" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.alp_metadata.version = \"${alp_metadata_version}\""`
+
+       fee_model_id=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.rebase_fee_model.id" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model.id = \"${fee_model_id}\""`
+
+       fee_model_version=`echo "$deploy_log" | grep "$package::model::RebaseFeeModel" -B 3 | grep initial_shared_version | awk -F 'Number\\(' '{print $2}' | awk -F '\\)' '{print $1}'`
+       # modify field ".abex_core.rebase_fee_model.version" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.rebase_fee_model.version = \"${fee_model_version}\""`
 
        ### grep from events
 
-       vaults_parent=`echo "$deploy_log" | grep "vaults_parent_id" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       referrals_parent=`echo "$deploy_log" | grep "referrals_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.referrals_parent" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.referrals_parent = \"$referrals_parent\""`
+
+       vaults_parent=`echo "$deploy_log" | grep "vaults_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.vaults_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.vaults_parent = \"$vaults_parent\""`
 
-       symbols_parent=`echo "$deploy_log" | grep "symbols_parent_id" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       symbols_parent=`echo "$deploy_log" | grep "symbols_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.symbols_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.symbols_parent = \"$symbols_parent\""`
 
-       positions_parent=`echo "$deploy_log" | grep "positions_parent_id" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       positions_parent=`echo "$deploy_log" | grep "positions_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".abex_core.positions_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.positions_parent = \"$positions_parent\""`
 

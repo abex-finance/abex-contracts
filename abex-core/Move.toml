@@ -1,19 +1,18 @@
 [package]
 name = "abex-core"
 version = "0.0.1"
-published-at = "0xedb80ccaf8bbc260c56aec9da9fe8c9f322d782d65e62ab46c214e72631cda11"
+published-at = "0xdfa870297aee02254573991d4d76cf3769a5e3e435fa3ff8efb91bdd9881b524"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
 rev = "sui-v1.0.0"
 
-[dependencies.abex-feeder]
-local = "../abex-feeder"
+[dependencies.Pyth]
+local = "../vendor/pyth"
 
 [addresses]
 std = "0x1"
 sui = "0x2"
-# switchboard_std = "0x524c15a935d4c34474cdf2604ee42a6c47591d13c6ffb6b678f6b7eaffba12fe"
-abex_feeder = "0x4738f8ef615b1508a0a43f15bc0a1d57bc7552fd78e142ff6eb9b4fbc8c80092"
-abex_core = "0xedb80ccaf8bbc260c56aec9da9fe8c9f322d782d65e62ab46c214e72631cda11"
+pyth = "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44"
+abex_core = "0xdfa870297aee02254573991d4d76cf3769a5e3e435fa3ff8efb91bdd9881b524"

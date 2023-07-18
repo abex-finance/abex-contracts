@@ -1,6 +1,7 @@
 
 module abex_core::position {
-    use sui::math;
+    use std::option::{Self, Option};
+
     use sui::balance::{Self, Balance};
     
     use abex_core::rate::{Self, Rate};
@@ -12,18 +13,22 @@ module abex_core::position {
     friend abex_core::pool;
     friend abex_core::market;
 
-    const ERR_INVALID_PLEDGE: u64 = 0;
-    const ERR_INVALID_REDEEM_AMOUNT: u64 = 1;
-    const ERR_INVALID_OPEN_AMOUNT: u64 = 2;
-    const ERR_INVALID_DECREASE_AMOUNT: u64 = 3;
-    const ERR_INSUFFICIENT_COLLATERAL: u64 = 4;
-    const ERR_INSUFFICIENT_RESERVED: u64 = 5;
-    const ERR_POSITION_SIZE_TOO_LESS: u64 = 6;
-    const ERR_HOLDING_DURATION_TOO_SHORT: u64 = 7;
-    const ERR_LEVERAGE_TOO_LARGE: u64 = 8;
-    const ERR_LIQUIDATION_TRIGGERED: u64 = 9;
-    const ERR_LIQUIDATION_NOT_TRIGGERED: u64 = 10;
-    const ERR_EXCEED_MAX_RESERVED: u64 = 11;
+    const OK: u64 = 0x0;
+
+    const ERR_ALREADY_CLOSED: u64 = 1;
+    const ERR_POSITION_NOT_CLOSED: u64 = 2;
+    const ERR_INVALID_PLEDGE: u64 = 3;
+    const ERR_INVALID_REDEEM_AMOUNT: u64 = 4;
+    const ERR_INVALID_OPEN_AMOUNT: u64 = 5;
+    const ERR_INVALID_DECREASE_AMOUNT: u64 = 6;
+    const ERR_INSUFFICIENT_COLLATERAL: u64 = 7;
+    const ERR_INSUFFICIENT_RESERVED: u64 = 8;
+    const ERR_POSITION_SIZE_TOO_LESS: u64 = 9;
+    const ERR_HOLDING_DURATION_TOO_SHORT: u64 = 10;
+    const ERR_LEVERAGE_TOO_LARGE: u64 = 11;
+    const ERR_LIQUIDATION_TRIGGERED: u64 = 12;
+    const ERR_LIQUIDATION_NOT_TRIGGERED: u64 = 13;
+    const ERR_EXCEED_MAX_RESERVED: u64 = 14;
 
     // === Storage ===
 
@@ -46,6 +51,7 @@ module abex_core::position {
     }
 
     struct Position<phantom C> has store {
+        closed: bool,
         config: PositionConfig,
         open_timestamp: u64,
         position_amount: u64,
@@ -56,6 +62,29 @@ module abex_core::position {
         last_funding_rate: SRate,
         reserved: Balance<C>,
         collateral: Balance<C>,
+    }
+
+    // === Cache State ===
+
+    struct OpenPositionResult<phantom C> {
+        position: Position<C>,
+        open_fee: Balance<C>,
+        open_fee_value: Decimal,
+        open_fee_amount_dec: Decimal,
+    }
+
+    struct DecreasePositionResult<phantom C> {
+        closed: bool,
+        has_profit: bool,
+        settled_amount: u64,
+        decreased_reserved_amount: u64,
+        decrease_size: Decimal,
+        reserving_fee_amount: Decimal,
+        decrease_fee_value: Decimal,
+        reserving_fee_value: Decimal,
+        funding_fee_value: SDecimal,
+        to_vault: Balance<C>,
+        to_trader: Balance<C>,
     }
 
     public(friend) fun new_position_config(
@@ -80,45 +109,66 @@ module abex_core::position {
         }
     }
 
+    // This is a special function which will be executed by either owner or executor.
+    // We have to avoid panic when the executor call it.
+    // BTW: It is really disgusting that there is no dynamic dispatch in move lang,
+    // which brings a hard work to handle with catching errors!
     public(friend) fun open_position<C>(
-        config: PositionConfig,
+        config: &PositionConfig,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
-        reserved: Balance<C>,
-        collateral: Balance<C>,
+        liquidity: &mut Balance<C>,
+        collateral: &mut Balance<C>,
         open_amount: u64,
+        reserve_amount: u64,
         reserving_rate: Rate,
         funding_rate: SRate,
         timestamp: u64,
-    ): (Position<C>, Balance<C>, Decimal) {
-        assert!(balance::value(&collateral) > 0, ERR_INVALID_PLEDGE);
-        assert!(open_amount > 0, ERR_INVALID_OPEN_AMOUNT);
-        assert!(
-            balance::value(&collateral) * config.max_reserved_multiplier
-                >= balance::value(&reserved),
-            ERR_EXCEED_MAX_RESERVED,
-        );
+    ): (u64, Option<OpenPositionResult<C>>) {
+        if (balance::value(collateral) == 0) {
+            return (ERR_INVALID_PLEDGE, option::none())
+        };
+        if (open_amount == 0) {
+            return (ERR_INVALID_OPEN_AMOUNT, option::none())
+        };
+        if (
+            balance::value(collateral) * config.max_reserved_multiplier < reserve_amount
+        ) {
+            return (ERR_EXCEED_MAX_RESERVED, option::none())
+        };
+
         // compute position size
         let open_size = agg_price::coins_to_value(index_price, open_amount);
-        assert!(
-            decimal::ge(&open_size, &config.min_size),
-            ERR_POSITION_SIZE_TOO_LESS,
-        );
+        if (decimal::lt(&open_size, &config.min_size)) {
+            return (ERR_POSITION_SIZE_TOO_LESS, option::none())
+        };
 
-        // compute open position fee
+        // compute fee
         let open_fee_value = decimal::mul_with_rate(open_size, config.open_fee_bps);
-        let open_fee_amount = decimal::ceil_u64(
-            agg_price::value_to_coins(collateral_price, open_fee_value)
-        );
-        assert!(
-            open_fee_amount < balance::value(&collateral),
-            ERR_INSUFFICIENT_COLLATERAL,
-        );
-        let open_fee = balance::split(&mut collateral, open_fee_amount);
+        let open_fee_amount_dec = agg_price::value_to_coins(collateral_price, open_fee_value);
+        let open_fee_amount = decimal::ceil_u64(open_fee_amount_dec);
+        if (open_fee_amount >= balance::value(collateral)) {
+            return (ERR_INSUFFICIENT_COLLATERAL, option::none())
+        };
 
-        // create position
-        let position = Position {
+        // validate leverage
+        let ok = check_leverage(
             config,
+            balance::value(collateral) - open_fee_amount,
+            open_amount,
+            collateral_price,
+            index_price,
+        );
+        if (!ok) {
+            return (ERR_LEVERAGE_TOO_LARGE, option::none())
+        };
+
+        // take away open fee
+        let open_fee = balance::split(collateral, open_fee_amount);
+        // construct position
+        let position = Position {
+            closed: false,
+            config: *config,
             open_timestamp: timestamp,
             position_amount: open_amount,
             position_size: open_size,
@@ -126,86 +176,39 @@ module abex_core::position {
             funding_fee_value: sdecimal::zero(),
             last_reserving_rate: reserving_rate,
             last_funding_rate: funding_rate,
-            reserved,
-            collateral,
+            reserved: balance::split(liquidity, reserve_amount),
+            collateral: balance::withdraw_all(collateral),
         };
 
-        // validate leverage
-        let ok = check_leverage(&position, collateral_price, index_price);
-        assert!(ok, ERR_LEVERAGE_TOO_LARGE);
-
-        (position, open_fee, open_fee_value)
+        let result = OpenPositionResult {
+            position,
+            open_fee,
+            open_fee_value,
+            open_fee_amount_dec,
+        }; 
+        (OK, option::some(result))
     }
 
-    public(friend) fun decrease_reserved_from_position<C>(
-        position: &mut Position<C>,
-        decrease_amount: u64,
-        reserving_rate: Rate,
-    ): Balance<C> {
-        assert!(
-            decrease_amount < balance::value(&position.reserved),
-            ERR_INSUFFICIENT_RESERVED,
-        );
-
-        // update dynamic fee
-        position.reserving_fee_amount = reserving_fee_amount(position, reserving_rate);
-        position.last_reserving_rate = reserving_rate;        
-
-        balance::split(&mut position.reserved, decrease_amount)
-    }
-
-    public(friend) fun pledge_in_position<C>(
-        position: &mut Position<C>,
-        pledge: Balance<C>,
+    public(friend) fun unwrap_open_position_result<C>(res: OpenPositionResult<C>): (
+        Position<C>,
+        Balance<C>,
+        Decimal,
+        Decimal,
     ) {
-        // handle pledge
-        assert!(balance::value(&pledge) > 0, ERR_INVALID_PLEDGE);
-        let _ = balance::join(&mut position.collateral, pledge);
+        let OpenPositionResult {
+            position,
+            open_fee,
+            open_fee_value,
+            open_fee_amount_dec,
+        } = res;
+
+        (position, open_fee, open_fee_value, open_fee_amount_dec)
     }
 
-    public(friend) fun redeem_from_position<C>(
-        position: &mut Position<C>,
-        collateral_price: &AggPrice,
-        index_price: &AggPrice,
-        long: bool,
-        redeem_amount: u64,
-        reserving_rate: Rate,
-        funding_rate: SRate,
-        timestamp: u64,
-    ): Balance<C> {
-        assert!(
-            redeem_amount > 0
-                && redeem_amount < balance::value(&position.collateral),
-            ERR_INVALID_REDEEM_AMOUNT,
-        );
-
-        // compute delta size
-        let delta_size = compute_delta_size(position, index_price, long);
-
-        // check holding duration
-        let ok = check_holding_duration(position, &delta_size, timestamp);
-        assert!(ok, ERR_HOLDING_DURATION_TOO_SHORT);
-
-        // update dynamic fee
-        position.reserving_fee_amount = reserving_fee_amount(position, reserving_rate);
-        position.last_reserving_rate = reserving_rate;
-        position.funding_fee_value = funding_fee_value(position, funding_rate);
-        position.last_funding_rate = funding_rate;
-
-        // redeem
-        let redeem = balance::split(&mut position.collateral, redeem_amount);
-
-        // validate leverage
-        ok = check_leverage(position, collateral_price, index_price);
-        assert!(ok, ERR_LEVERAGE_TOO_LARGE);
-
-        // validate liquidation
-        ok = check_liquidation(position, &delta_size, collateral_price);
-        assert!(!ok, ERR_LIQUIDATION_TRIGGERED);
-
-        redeem
-    }
-
+    // This is a special function which will be executed by either owner or executor.
+    // We have to avoid panic when the executor call it.
+    // BTW: It is really disgusting that there is no dynamic dispatch in move lang,
+    // which brings a hard work to handle with catching errors!
     public(friend) fun decrease_position<C>(
         position: &mut Position<C>,
         collateral_price: &AggPrice,
@@ -215,22 +218,16 @@ module abex_core::position {
         reserving_rate: Rate,
         funding_rate: SRate,
         timestamp: u64,
-    ): (
-        bool,
-        u64,
-        u64,
-        Decimal,
-        Decimal,
-        Decimal,
-        Decimal,
-        SDecimal,
-        Balance<C>,
-        Balance<C>,
-    ) {
-        assert!(
-            decrease_amount > 0 && decrease_amount < position.position_amount,
-            ERR_INVALID_DECREASE_AMOUNT,
-        );
+    ): (u64, Option<DecreasePositionResult<C>>) {
+        if (position.closed) {
+            return (ERR_ALREADY_CLOSED, option::none())
+        };
+        if (
+            decrease_amount == 0 || decrease_amount > position.position_amount
+        ) {
+            return (ERR_INVALID_DECREASE_AMOUNT, option::none())
+        };
+
         let decrease_size = decimal::div_by_u64(
             decimal::mul_with_u64(position.position_size, decrease_amount),
             position.position_amount,
@@ -246,25 +243,22 @@ module abex_core::position {
 
         // check holding duration
         let ok = check_holding_duration(position, &delta_size, timestamp);
-        assert!(ok, ERR_HOLDING_DURATION_TOO_SHORT);
+        if (!ok) {
+            return (ERR_HOLDING_DURATION_TOO_SHORT, option::none())
+        };
 
-        // update dynamic fee
-        position.reserving_fee_amount = reserving_fee_amount(position, reserving_rate);
-        position.last_reserving_rate = reserving_rate;
-        position.funding_fee_value = funding_fee_value(position, funding_rate);
-        position.last_funding_rate = funding_rate;
-
-       // compute fee
-        let reserving_fee_amount = position.reserving_fee_amount;
-        let funding_fee_value = position.funding_fee_value;
-        let decrease_fee_value = decimal::mul_with_rate(
-            decrease_size,
-            position.config.decrease_fee_bps,
-        );
+        // compute fee
+        let reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
         let reserving_fee_value = agg_price::coins_to_value(
             collateral_price,
             decimal::ceil_u64(reserving_fee_amount),
         );
+        let funding_fee_value = compute_funding_fee_value(position, funding_rate);
+        let decrease_fee_value = decimal::mul_with_rate(
+            decrease_size,
+            position.config.decrease_fee_bps,
+        );
+
         // impact fee on settled delta size
         settled_delta_size = sdecimal::sub(
             settled_delta_size,
@@ -274,62 +268,144 @@ module abex_core::position {
             ),
         );
 
-        // settlement
+        let closed = decrease_amount == position.position_amount;
+
+        // handle settlement
         let has_profit = sdecimal::is_positive(&settled_delta_size);
         let settled_amount = agg_price::value_to_coins(
             collateral_price,
             sdecimal::value(&settled_delta_size),
         );
-        let (
-            settled_amount,
-            decreased_reserved_amount,
-            to_vault,
-            to_trader,
-        ) = if (has_profit) {
+        let (settled_amount, decreased_reserved_amount) = if (has_profit) {
             let profit_amount = decimal::floor_u64(settled_amount);
-            assert!(
-                profit_amount < balance::value(&position.reserved),
-                ERR_INSUFFICIENT_RESERVED,
-            );
-            (
-                profit_amount,
-                profit_amount,
-                balance::zero(),
-                balance::split(&mut position.reserved, profit_amount),
-            )
+            if (profit_amount >= balance::value(&position.reserved)) {
+                // should close position if reserved is not enough to pay profit
+                closed = true;
+                profit_amount = balance::value(&position.reserved);
+            };
+            
+            (profit_amount, profit_amount)
         } else {
             let loss_amount = decimal::ceil_u64(settled_amount);
-            assert!(
-                loss_amount < balance::value(&position.collateral),
-                ERR_INSUFFICIENT_COLLATERAL,    
+            if (loss_amount >= balance::value(&position.collateral)) {
+                // should close position if collateral is not enough to pay loss
+                closed = true;
+                loss_amount = balance::value(&position.collateral);
+            };
+
+            (loss_amount, if (closed) { balance::value(&position.reserved) } else { 0 })
+        };
+
+        let position_amount = position.position_amount - decrease_amount;
+        let position_size = decimal::sub(position.position_size, decrease_size);
+
+        // should check the position if not closed
+        if (!closed) {
+            if (decimal::lt(&position_size, &position.config.min_size)) {
+                return (ERR_POSITION_SIZE_TOO_LESS, option::none())
+            };
+
+            let collateral_amount = if (has_profit) {
+                balance::value(&position.collateral)
+            } else {
+                balance::value(&position.collateral) - settled_amount
+            };
+
+            // validate leverage
+            ok = check_leverage(
+                &position.config,
+                collateral_amount,
+                position_amount,
+                collateral_price,
+                index_price,
             );
+            if (!ok) {
+                return (ERR_LEVERAGE_TOO_LARGE, option::none())
+            };
+
+            // check liquidation
+            ok = check_liquidation(
+                &position.config,
+                collateral_amount,
+                &delta_size,
+                collateral_price,
+            );
+            if (ok) {
+                return (ERR_LIQUIDATION_TRIGGERED, option::none())
+            };
+        };
+
+        // update position
+        position.closed = closed;
+        position.position_amount = position_amount;
+        position.position_size = position_size;
+        position.reserving_fee_amount = decimal::zero();
+        position.funding_fee_value = sdecimal::zero();
+        position.last_funding_rate = funding_rate;
+        position.last_reserving_rate = reserving_rate;
+
+        let (to_vault, to_trader) = if (has_profit) {
             (
-                loss_amount,
-                0,
-                balance::split(&mut position.collateral, loss_amount),
+                balance::zero(),
+                balance::split(&mut position.reserved, settled_amount),
+            )
+        } else {
+            (
+                balance::split(&mut position.collateral, settled_amount),
                 balance::zero(),
             )
         };
 
-        // update position
-        position.position_amount = position.position_amount - decrease_amount;
-        position.position_size = decimal::sub(position.position_size, decrease_size);
-        assert!(
-            decimal::ge(&position.position_size, &position.config.min_size),
-            ERR_POSITION_SIZE_TOO_LESS,
-        );
-        position.reserving_fee_amount = decimal::zero();
-        position.funding_fee_value = sdecimal::zero();
+        if (closed) {
+            let _ = balance::join(&mut to_vault, balance::withdraw_all(&mut position.reserved));
+            let _ = balance::join(&mut to_trader, balance::withdraw_all(&mut position.collateral));
+        };
 
-        // validate leverage
-        ok = check_leverage(position, collateral_price, index_price);
-        assert!(ok, ERR_LEVERAGE_TOO_LARGE);
+        let result = DecreasePositionResult {
+            closed,
+            has_profit,
+            settled_amount,
+            decreased_reserved_amount,
+            decrease_size,
+            reserving_fee_amount,
+            decrease_fee_value,
+            reserving_fee_value,
+            funding_fee_value,
+            to_vault,
+            to_trader,
+        };
+        (OK, option::some(result))
+    }
 
-        // check liquidation
-        ok = check_liquidation(position, &delta_size, collateral_price);
-        assert!(!ok, ERR_LIQUIDATION_TRIGGERED);
+    public(friend) fun unwrap_decrease_position_result<C>(res: DecreasePositionResult<C>): (
+        bool,
+        bool,
+        u64,
+        u64,
+        Decimal,
+        Decimal,
+        Decimal,
+        Decimal,
+        SDecimal,
+        Balance<C>,
+        Balance<C>,
+    ) {
+        let DecreasePositionResult {
+            closed,
+            has_profit,
+            settled_amount,
+            decreased_reserved_amount,
+            decrease_size,
+            reserving_fee_amount,
+            decrease_fee_value,
+            reserving_fee_value,
+            funding_fee_value,
+            to_vault,
+            to_trader,
+        } = res;
 
         (
+            closed,
             has_profit,
             settled_amount,
             decreased_reserved_amount,
@@ -343,116 +419,91 @@ module abex_core::position {
         )
     }
 
-    public(friend) fun close_position<C>(
-        position: Position<C>,
+    public(friend) fun decrease_reserved_from_position<C>(
+        position: &mut Position<C>,
+        decrease_amount: u64,
+        reserving_rate: Rate,
+    ): Balance<C> {
+        assert!(!position.closed, ERR_ALREADY_CLOSED);
+        assert!(
+            decrease_amount < balance::value(&position.reserved),
+            ERR_INSUFFICIENT_RESERVED,
+        );
+
+        // compute and update fee
+        position.reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
+        position.last_reserving_rate = reserving_rate;        
+
+        balance::split(&mut position.reserved, decrease_amount)
+    }
+
+    public(friend) fun pledge_in_position<C>(
+        position: &mut Position<C>,
+        pledge: Balance<C>,
+    ) {
+        assert!(!position.closed, ERR_ALREADY_CLOSED);
+        // handle pledge
+        assert!(balance::value(&pledge) > 0, ERR_INVALID_PLEDGE);
+        let _ = balance::join(&mut position.collateral, pledge);
+    }
+
+    public(friend) fun redeem_from_position<C>(
+        position: &mut Position<C>,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
         long: bool,
+        redeem_amount: u64,
         reserving_rate: Rate,
         funding_rate: SRate,
         timestamp: u64,
-    ): (
-        bool,
-        u64,
-        u64,
-        u64,
-        Decimal,
-        Decimal,
-        Decimal,
-        Decimal,
-        SDecimal,
-        Balance<C>,
-        Balance<C>,
-    ) {
+    ): Balance<C> {
+        assert!(!position.closed, ERR_ALREADY_CLOSED);
+        assert!(
+            redeem_amount > 0
+                && redeem_amount < balance::value(&position.collateral),
+            ERR_INVALID_REDEEM_AMOUNT,
+        );
+
         // compute delta size
-        let delta_size = compute_delta_size(&position, index_price, long);
+        let delta_size = compute_delta_size(position, index_price, long);
 
         // check holding duration
-        let ok = check_holding_duration(&position, &delta_size, timestamp);
+        let ok = check_holding_duration(position, &delta_size, timestamp);
         assert!(ok, ERR_HOLDING_DURATION_TOO_SHORT);
 
-        // update dynamic fee
-        position.reserving_fee_amount = reserving_fee_amount(&position, reserving_rate);
+        // compute and update fee
+        position.reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
         position.last_reserving_rate = reserving_rate;
-        position.funding_fee_value = funding_fee_value(&position, funding_rate);
+        position.funding_fee_value = compute_funding_fee_value(position, funding_rate);
         position.last_funding_rate = funding_rate;
 
-        // unwrap position
-        let Position {
-            config,
-            open_timestamp: _,
-            position_amount,
-            position_size,
-            reserving_fee_amount,
-            funding_fee_value,
-            last_reserving_rate: _,
-            last_funding_rate: _,
-            reserved: to_vault,
-            collateral: to_trader,
-        } = position;
-        let reserved_amount = balance::value(&to_vault);
+        // redeem
+        let redeem = balance::split(&mut position.collateral, redeem_amount);
 
-        // compute fee
-        let close_fee_value = decimal::mul_with_rate(
-            position_size,
-            config.decrease_fee_bps,
-        );
-        let reserving_fee_value = agg_price::coins_to_value(
+        // validate leverage
+        ok = check_leverage(
+            &position.config,
+            balance::value(&position.collateral),
+            position.position_amount,
             collateral_price,
-            decimal::ceil_u64(reserving_fee_amount),
+            index_price,
         );
-        // impact fee on delta size
-        delta_size = sdecimal::sub(
-            delta_size,
-            sdecimal::add_with_decimal(
-                funding_fee_value,
-                decimal::add(close_fee_value, reserving_fee_value),
-            ),
-        );
+        assert!(ok, ERR_LEVERAGE_TOO_LARGE);
 
-        // settlement
-        let has_profit = sdecimal::is_positive(&delta_size);
-        let settled_amount = agg_price::value_to_coins(
+        // validate liquidation
+        ok = check_liquidation(
+            &position.config,
+            balance::value(&position.collateral),
+            &delta_size,
             collateral_price,
-            sdecimal::value(&delta_size),
         );
-        let settled_amount = if (has_profit) {
-            let profit_amount = math::min(
-                decimal::floor_u64(settled_amount),
-                balance::value(&to_vault),
-            );
-            balance::join(
-                &mut to_trader,
-                balance::split(&mut to_vault, profit_amount),
-            )
-        } else {
-            let loss_amount = math::min(
-                decimal::ceil_u64(settled_amount),
-                balance::value(&to_trader),
-            );
-            balance::join(
-                &mut to_vault,
-                balance::split(&mut to_trader, loss_amount),
-            )
-        };
+        assert!(!ok, ERR_LIQUIDATION_TRIGGERED);
 
-        (
-            has_profit,
-            settled_amount,
-            position_amount,
-            reserved_amount,
-            position_size,
-            reserving_fee_amount,
-            close_fee_value,
-            reserving_fee_value,
-            funding_fee_value,
-            to_vault,
-            to_trader,
-        )
+        redeem
     }
 
     public(friend) fun liquidate_position<C>(
-        position: Position<C>,
+        position: &mut Position<C>,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
         long: bool,
@@ -470,20 +521,19 @@ module abex_core::position {
         Balance<C>,
         Balance<C>,
     ) {
-        // compute delta size
-        let delta_size = compute_delta_size(&position, index_price, long);
+        assert!(!position.closed, ERR_ALREADY_CLOSED);
 
-        // update dynamic fee
-        position.reserving_fee_amount = reserving_fee_amount(&position, reserving_rate);
-        position.last_reserving_rate = reserving_rate;
-        position.funding_fee_value = funding_fee_value(&position, funding_rate);
-        position.last_funding_rate = funding_rate;
+        // compute delta size
+        let delta_size = compute_delta_size(position, index_price, long);
 
         // compute fee
+        let reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
         let reserving_fee_value = agg_price::coins_to_value(
             collateral_price,
             decimal::ceil_u64(position.reserving_fee_amount),
         );
+        let funding_fee_value = compute_funding_fee_value(position, funding_rate);
+
         // impact fee on delta size
         delta_size = sdecimal::sub(
             delta_size,
@@ -494,37 +544,43 @@ module abex_core::position {
         );
 
         // liquidation check
-        let ok = check_liquidation(&position, &delta_size, collateral_price);
+        let ok = check_liquidation(
+            &position.config,
+            balance::value(&position.collateral),
+            &delta_size,
+            collateral_price,
+        );
         assert!(ok, ERR_LIQUIDATION_NOT_TRIGGERED);
 
-        // unwrap position
-        let Position {
-            config,
-            open_timestamp: _,
-            position_amount,
-            position_size,
-            reserving_fee_amount,
-            funding_fee_value,
-            last_reserving_rate: _,
-            last_funding_rate: _,
-            reserved: to_vault,
-            collateral,
-        } = position;
-        let reserved_amount = balance::value(&to_vault);
+        let position_amount = position.position_amount;
+        let position_size = position.position_size;
+        let collateral_amount = balance::value(&position.collateral);
+        let reserved_amount = balance::value(&position.reserved);
 
-        // liquidation bonus
+        // update position
+        position.closed = true;
+        position.position_amount = 0;
+        position.position_size = decimal::zero();
+        position.reserving_fee_amount = decimal::zero();
+        position.funding_fee_value = sdecimal::zero();
+        position.last_funding_rate = funding_rate;
+        position.last_reserving_rate = reserving_rate;
+
+        // compute liquidation bonus
         let bonus_amount = decimal::floor_u64(
             decimal::mul_with_rate(
-                decimal::from_u64(balance::value(&collateral)),
-                config.liquidation_bonus,
+                decimal::from_u64(collateral_amount),
+                position.config.liquidation_bonus,
             )
         );
-        let to_liquidator = balance::split(&mut collateral, bonus_amount);
-        let loss_amount = balance::join(&mut to_vault, collateral);
+
+        let to_liquidator = balance::split(&mut position.collateral, bonus_amount);
+        let to_vault = balance::withdraw_all(&mut position.reserved);
+        let _ = balance::join(&mut to_vault, balance::withdraw_all(&mut position.collateral));
     
         (
             bonus_amount,
-            loss_amount,
+            collateral_amount,
             position_amount,
             reserved_amount,
             position_size,
@@ -536,18 +592,66 @@ module abex_core::position {
         )
     }
 
-    // TODO: finish this
-    // public(friend) fun emergency_close_position<C>(
-    //     position: Position<C>,
-    //     reserving_rate: Rate,
-    // ): (Balance<C>, Balance<C>) {
-    //     // update dynamic fee
-    //     position.reserving_fee_amount = reserving_fee_amount(&position, reserving_rate);
-    //     position.last_reserving_rate = reserving_rate;
+    public(friend) fun destroy_position<C>(position: Position<C>) {
+        // unwrap position
+        let Position {
+            closed,
+            config: _,
+            open_timestamp: _,
+            position_amount: _,
+            position_size: _,
+            reserving_fee_amount: _,
+            funding_fee_value: _,
+            last_reserving_rate: _,
+            last_funding_rate: _,
+            reserved,
+            collateral,
+        } = position;
+        assert!(closed, ERR_POSITION_NOT_CLOSED);
 
-    // }
+        balance::destroy_zero(reserved);
+        balance::destroy_zero(collateral);
+    }
 
-    //////////////////////////// public read functions ////////////////////////////
+    // TODO: implement emergency close position
+
+    /// public read functions
+
+    public fun config_max_leverage(config: &PositionConfig): u64 {
+        config.max_leverage
+    }
+
+    public fun config_min_holding_duration(config: &PositionConfig): u64 {
+        config.min_holding_duration
+    }
+
+    public fun config_max_reserved_multiplier(config: &PositionConfig): u64 {
+        config.max_reserved_multiplier
+    }
+
+    public fun config_min_size(config: &PositionConfig): Decimal {
+        config.min_size
+    }
+
+    public fun config_open_fee_bps(config: &PositionConfig): Rate {
+        config.open_fee_bps
+    }
+
+    public fun config_decrease_fee_bps(config: &PositionConfig): Rate {
+        config.decrease_fee_bps
+    }
+
+    public fun config_liquidation_threshold(config: &PositionConfig): Rate {
+        config.liquidation_threshold
+    }
+
+    public fun config_liquidation_bonus(config: &PositionConfig): Rate {
+        config.liquidation_bonus
+    }
+
+    public fun closed<C>(position: &Position<C>): bool {
+        position.closed
+    }
 
     public fun position_config<C>(position: &Position<C>): &PositionConfig {
         &position.config
@@ -573,7 +677,7 @@ module abex_core::position {
         balance::value(&position.reserved)
     }
 
-    public fun reserving_fee_amount<C>(
+    public fun compute_reserving_fee_amount<C>(
         position: &Position<C>,
         reserving_rate: Rate,
     ): Decimal {
@@ -584,7 +688,7 @@ module abex_core::position {
         decimal::add(position.reserving_fee_amount, delta_fee)
     }
 
-    public fun funding_fee_value<C>(
+    public fun compute_funding_fee_value<C>(
         position: &Position<C>,
         funding_rate: SRate,
     ): SDecimal {
@@ -632,28 +736,25 @@ module abex_core::position {
                 + position.config.min_holding_duration <= timestamp
     }
 
-    public fun check_leverage<C>(
-        position: &Position<C>,
+    public fun check_leverage(
+        config: &PositionConfig,
+        collateral_amount: u64,
+        position_amount: u64,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
     ): bool {
         let max_size = decimal::mul_with_u64(
-            agg_price::coins_to_value(
-                collateral_price,
-                balance::value(&position.collateral),
-            ),
-            position.config.max_leverage,
+            agg_price::coins_to_value(collateral_price, collateral_amount),
+            config.max_leverage,
         );
-        let latest_size = agg_price::coins_to_value(
-            index_price,
-            position.position_amount,
-        );
+        let latest_size = agg_price::coins_to_value(index_price, position_amount);
 
         decimal::ge(&max_size, &latest_size)
     }
 
-    public fun check_liquidation<C>(
-        position: &Position<C>,
+    public fun check_liquidation(
+        config: &PositionConfig,
+        collateral_amount: u64,
         delta_size: &SDecimal,
         collateral_price: &AggPrice,
     ): bool {
@@ -662,12 +763,12 @@ module abex_core::position {
         } else {
             let collateral_value = agg_price::coins_to_value(
                 collateral_price,
-                balance::value(&position.collateral),
+                collateral_amount,
             );
             decimal::le(
                 &decimal::mul_with_rate(
                     collateral_value,
-                    position.config.liquidation_threshold,
+                    config.liquidation_threshold,
                 ),
                 &sdecimal::value(delta_size),
             )
