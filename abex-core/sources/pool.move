@@ -17,6 +17,7 @@ module abex_core::pool {
     use abex_core::agg_price::{Self, AggPrice, AggPriceConfig};
     use abex_core::position::{Self, Position, PositionConfig};
 
+    friend abex_core::orders;
     friend abex_core::market;
 
     // === Storage ===
@@ -443,6 +444,7 @@ module abex_core::pool {
         collateral_price: &AggPrice,
         index_price: &AggPrice,
         collateral: &mut Balance<C>,
+        collateral_price_threshold: Decimal,
         rebate_rate: Rate,
         long: bool,
         open_amount: u64,
@@ -493,6 +495,7 @@ module abex_core::pool {
             index_price,
             &mut vault.liquidity,
             collateral,
+            collateral_price_threshold,
             open_amount,
             reserve_amount,
             vault.acc_reserving_rate,
@@ -574,6 +577,7 @@ module abex_core::pool {
         funding_fee_model: &FundingFeeModel,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
+        collateral_price_threshold: Decimal,
         rebate_rate: Rate,
         long: bool,
         decrease_amount: u64,
@@ -610,6 +614,7 @@ module abex_core::pool {
             position,
             collateral_price,
             index_price,
+            collateral_price_threshold,
             long,
             decrease_amount,
             vault.acc_reserving_rate,

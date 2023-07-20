@@ -27,6 +27,9 @@ module abex_core::market {
     use abex_core::model::{
         Self, RebaseFeeModel, ReservingFeeModel, FundingFeeModel,
     };
+    use abex_core::orders::{
+        Self, OpenPositionOrder, DecreasePositionOrder, TriggerPositionOrder,
+    };
     use abex_core::pool::{
         Self, Vault, Symbol,
         OpenPositionSuccessEvent, OpenPositionFailedEvent,
@@ -49,6 +52,7 @@ module abex_core::market {
         vaults: Bag,
         symbols: Bag,
         positions: Bag,
+        orders: Bag,
 
         lp_supply: Supply<L>,
     }
@@ -63,46 +67,11 @@ module abex_core::market {
         enabled: bool,
         inner: PositionConfig,
     }
-    
-    struct OpenPositionOrder<phantom C, phantom I, phantom D, phantom F> has key {
+
+    struct OrderCap<phantom C, phantom I, phantom D, phantom F> has key {
         id: UID,
 
-        executed: bool,
-        owner: address,
-        open_amount: u64,
-        reserve_amount: u64,
-        limited_index_price: AggPrice,
-        collateral_price_threshold: Decimal,
-        position_config: PositionConfig,
-        collateral: Balance<C>,
-        fee: Balance<F>,
-    }
-
-    struct DecreasePositionOrder<phantom C, phantom I, phantom D, phantom F> has key {
-        id: UID,
-
-        executed: bool,
-        position_name: PositionName<C, I, D>,
-        decrease_amount: u64,
-        limited_index_price: AggPrice,
-        collateral_price_threshold: Decimal,
-        fee: Balance<F>,
-    }
-
-    struct TakeProfitOrStopLossOrder<phantom C, phantom I, phantom D, phantom F> has key {
-        id: UID,
-
-        executed: bool,
-        take_profit: bool,
-        position_name: PositionName<C, I, D>,
-        threshold: u64,
-        fee: Balance<F>,
-    }
-
-    struct OrderCap<phantom C, phantom I, phantom D> has key {
-        id: UID,
-
-        order_id: ID,
+        position_id: Option<ID>,
     }
 
     // === tag structs ===
@@ -115,13 +84,39 @@ module abex_core::market {
 
     struct SymbolName<phantom I, phantom D> has copy, drop, store {}
 
-    struct PositionName<
+    struct PositionName<phantom C, phantom I, phantom D> has copy, drop, store {
+        id: ID,
+        owner: address,
+    }
+
+    struct OpenPositionOrderName<
         phantom C,
         phantom I,
         phantom D,
+        phantom F,
     > has copy, drop, store {
         id: ID,
         owner: address,
+    }
+
+    struct DecreasePositionOrderName<
+        phantom C,
+        phantom I,
+        phantom D,
+        phantom F,
+    > has copy, drop, store {
+        id: ID,
+        position_name: PositionName<C, I, D>,
+    }
+
+    struct TriggerPositionOrderName<
+        phantom C,
+        phantom I,
+        phantom D,
+        phantom F,
+    > has copy, drop, store {
+        id: ID,
+        position_name: PositionName<C, I, D>,
     }
 
     // === Events ===
@@ -131,6 +126,7 @@ module abex_core::market {
         vaults_parent: ID,
         symbols_parent: ID,
         positions_parent: ID,
+        orders_parent: ID,
     }
 
     struct PositionClaimed<
@@ -139,8 +135,7 @@ module abex_core::market {
         phantom D,
         E: copy + drop,
     > has copy, drop {
-        id: Option<ID>,
-        owner: address,
+        position_name: Option<PositionName<C, I, D>>,
         event: E,
     }
 
@@ -166,8 +161,8 @@ module abex_core::market {
         dest_amount: u64,
     }
 
-    struct OrderCreated has copy, drop {
-        order_id: ID,
+    struct OrderCreated<N: copy + drop> has copy, drop {
+        order_name: N,
     }
 
     struct OrderExecuted<
@@ -175,9 +170,10 @@ module abex_core::market {
         phantom I,
         phantom D,
         E: copy + drop,
+        N: copy + drop,
     > has copy, drop {
-        order_id: ID,
-        inner: PositionClaimed<C, I, D, E>,
+        order_name: N,
+        claim: PositionClaimed<C, I, D, E>,
     }
 
     // === Hot Potato ===
@@ -206,17 +202,10 @@ module abex_core::market {
     // === Errors ===
     // perpetual trading errors
     const ERR_INVALID_DIRECTION: u64 = 1;
-    const ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD: u64 = 2;
     const ERR_CAN_NOT_CREATE_LIMIT_ORDER: u64 = 3;
     const ERR_CAN_NOT_TRADE_IMMEDIATELY: u64 = 4;
     const ERR_UNMATCHED_ORDER_ID: u64 = 5;
     const ERR_UNMATCHED_ORDER_OWNER: u64 = 6;
-    const ERR_INVALID_PROFIT_THRESHOLD: u64 = 7;
-    const ERR_INVALID_LOSS_THRESHOLD: u64 = 8;
-    const ERR_ORDER_ALREADY_EXECUTED: u64 = 9;
-    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 10;
-    const ERR_TAKE_PROFIT_NOT_TRIGGERED: u64 = 11;
-    const ERR_STOP_LOSS_NOT_TRIGGERED: u64 = 12;
     // deposit, withdraw and swap errors
     const ERR_VAULT_ALREADY_HANDLED: u64 = 13;
     const ERR_SYMBOL_ALREADY_HANDLED: u64 = 14;
@@ -336,6 +325,7 @@ module abex_core::market {
             vaults: bag::new(ctx),
             symbols: bag::new(ctx),
             positions: bag::new(ctx),
+            orders: bag::new(ctx),
             lp_supply,
         };
         // emit market created
@@ -344,6 +334,7 @@ module abex_core::market {
             vaults_parent: object::id(&market.vaults),
             symbols_parent: object::id(&market.symbols),
             positions_parent: object::id(&market.positions),
+            orders_parent: object::id(&market.orders),
         });
 
         transfer::share_object(market);
@@ -463,7 +454,7 @@ module abex_core::market {
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
-        position_config: &WrappedPositionConfig<C, D>,
+        position_config: &WrappedPositionConfig<I, D>,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         collateral: Coin<C>,
@@ -512,29 +503,33 @@ module abex_core::market {
         if (is_limited) {
             assert!(!allow_trade, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
 
-            let order = OpenPositionOrder<C, I, D, F> {
-                id: object::new(ctx),
-                executed: false,
+            let order_id = object::new(ctx);
+            let order_name = OpenPositionOrderName<C, I, D, F> {
+                id: object::uid_to_inner(&order_id),
                 owner,
+            };
+            let order = orders::new_open_position_order(
                 open_amount,
                 reserve_amount,
                 limited_index_price,
                 collateral_price_threshold,
-                position_config: position_config.inner,
-                collateral: coin::into_balance(collateral),
-                fee: coin::into_balance(fee),
-            };
-            let order_id = object::uid_to_inner(&order.id);
+                position_config.inner,
+                coin::into_balance(collateral),
+                coin::into_balance(fee),
+            );
+
+            bag::add(&mut market.orders, order_name, order);
 
             transfer::transfer(
-                OrderCap<C, I, D> { id: object::new(ctx), order_id },
+                OrderCap<C, I, D, F> {
+                    id: order_id,
+                    position_id: option::none(),
+                },
                 owner,
             );
 
-            transfer::share_object(order);
-
             // emit order created
-            event::emit(OrderCreated { order_id });
+            event::emit(OrderCreated { order_name });
         } else {
             assert!(allow_trade, ERR_CAN_NOT_TRADE_IMMEDIATELY);
 
@@ -547,13 +542,6 @@ module abex_core::market {
                 pool::vault_price_config(vault),
                 collateral_feeder,
                 timestamp,
-            );
-            assert!(
-                decimal::ge(
-                    &agg_price::price_of(&collateral_price),
-                    &collateral_price_threshold,
-                ),
-                ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD,
             );
 
             let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
@@ -572,6 +560,7 @@ module abex_core::market {
                 &collateral_price,
                 &index_price,
                 &mut collateral,
+                collateral_price_threshold,
                 rebate_rate,
                 long,
                 open_amount,
@@ -600,8 +589,7 @@ module abex_core::market {
 
             // emit position opened
             event::emit(PositionClaimed<C, I, D, OpenPositionSuccessEvent> {
-                id: option::some(position_name.id),
-                owner,
+                position_name: option::some(position_name),
                 event,
             });
         }
@@ -664,26 +652,30 @@ module abex_core::market {
         if (is_limited) {
             assert!(!allow_trade, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
 
-            let order = DecreasePositionOrder<C, I, D, F> {
-                id: object::new(ctx),
-                executed: false,
+            let order_id = object::new(ctx);
+            let order_name = DecreasePositionOrderName<C, I, D, F> {
+                id: object::uid_to_inner(&order_id),
                 position_name,
+            };
+            let order = orders::new_decrease_position_order(
                 decrease_amount,
                 limited_index_price,
                 collateral_price_threshold,
-                fee: coin::into_balance(fee),
-            };
-            let order_id = object::uid_to_inner(&order.id);
+                coin::into_balance(fee),
+            );
+
+            bag::add(&mut market.orders, order_name, order);
 
             transfer::transfer(
-                OrderCap<C, I, D> { id: object::new(ctx), order_id },
+                OrderCap<C, I, D, F> {
+                    id: order_id,
+                    position_id: option::some(position_name.id),    
+                },
                 owner,
             );
 
-            transfer::share_object(order);
-
             // emit order created
-            event::emit(OrderCreated { order_id });
+            event::emit(OrderCreated { order_name });
         } else {
             assert!(allow_trade, ERR_CAN_NOT_TRADE_IMMEDIATELY);
 
@@ -701,13 +693,6 @@ module abex_core::market {
                 collateral_feeder,
                 timestamp,
             );
-            assert!(
-                decimal::ge(
-                    &agg_price::price_of(&collateral_price),
-                    &collateral_price_threshold,
-                ),
-                ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD,
-            );
 
             let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
             let (code, result, failure) = pool::decrease_position(
@@ -718,6 +703,7 @@ module abex_core::market {
                 funding_fee_model,
                 &collateral_price,
                 &index_price,
+                collateral_price_threshold,
                 rebate_rate,
                 long,
                 decrease_amount,
@@ -738,11 +724,59 @@ module abex_core::market {
 
             // emit decrease position
             event::emit(PositionClaimed<C, I, D, DecreasePositionSuccessEvent> {
-                id: option::some(position_name.id),
-                owner,
+                position_name: option::some(position_name),
                 event,
             });
         }
+    }
+
+    public entry fun trigger_position<L, C, I, D, F>(
+        market: &mut Market<L>,
+        position_cap: &PositionCap<C, I, D>,
+        fee: Coin<F>,
+        take_profit: bool,
+        decrease_amount: u64,
+        profit_or_loss_threshold: u64,
+        collateral_price_threshold: u256,
+        ctx: &mut TxContext,
+    ) {
+        let owner = tx_context::sender(ctx);
+
+        let position_name = PositionName<C, I, D> {
+            id: object::uid_to_inner(&position_cap.id),
+            owner,
+        };
+        let position: &Position<C> = bag::borrow(
+            &market.positions,
+            position_name,
+        );
+
+        let order_id = object::new(ctx);
+        let order_name = TriggerPositionOrderName<C, I, D, F> {
+            id: object::uid_to_inner(&order_id),
+            position_name,
+        };
+        let order = orders::new_trigger_position_order(
+            position,
+            take_profit,
+            decrease_amount,
+            profit_or_loss_threshold,
+            decimal::from_raw(collateral_price_threshold),
+            coin::into_balance(fee),
+        );
+
+        bag::add(&mut market.orders, order_name, order);
+
+        transfer::transfer(
+            OrderCap<C, I, D, F> {
+                id: order_id,
+                position_id: option::some(position_name.id),    
+            },
+            owner,
+        );
+
+        // emit order created
+        event::emit(OrderCreated { order_name });
     }
 
     public entry fun decrease_reserved_from_position<L, C, I, D>(
@@ -780,8 +814,7 @@ module abex_core::market {
 
         // emit decrease reserved from position
         event::emit(PositionClaimed<C, I, D, DecreaseReservedFromPositionEvent> {
-            id: option::some(position_name.id),
-            owner,
+            position_name: option::some(position_name),
             event,
         });
     }
@@ -813,8 +846,7 @@ module abex_core::market {
 
         // emit pledge in position
         event::emit(PositionClaimed<C, I, D, PledgeInPositionEvent> {
-            id: option::some(position_name.id),
-            owner,
+            position_name: option::some(position_name),
             event,
         });
     }
@@ -882,8 +914,7 @@ module abex_core::market {
 
         // emit redeem from position
         event::emit(PositionClaimed<C, I, D, RedeemFromPositionEvent> {
-            id: option::some(position_name.id),
-            owner,
+            position_name: option::some(position_name),
             event,
         });
     }
@@ -951,8 +982,7 @@ module abex_core::market {
 
         // emit liquidate position
         event::emit(PositionClaimed<C, I, D, LiquidatePositionEvent> {
-            id: option::some(position_name.id),
-            owner,
+            position_name: option::some(position_name),
             event,
         });
     }
@@ -978,58 +1008,6 @@ module abex_core::market {
         object::delete(id);
     }
 
-    public entry fun take_profit_or_stop_loss<L, C, I, D, F>(
-        market: &Market<L>,
-        position_cap: &PositionCap<C, I, D>,
-        fee: Coin<F>,
-        take_profit: bool,
-        threshold: u64,
-        ctx: &mut TxContext,
-    ) {
-        let owner = tx_context::sender(ctx);
-
-        let position_name = PositionName<C, I, D> {
-            id: object::uid_to_inner(&position_cap.id),
-            owner,
-        };
-        let position: &Position<C> = bag::borrow(
-            &market.positions,
-            position_name,
-        );
-
-        if (take_profit) {
-            assert!(
-                threshold > 0 && threshold <= position::reserved_amount(position),
-                ERR_INVALID_PROFIT_THRESHOLD,
-            );
-        } else {
-            assert!(
-                threshold > 0 && threshold < position::collateral_amount(position),
-                ERR_INVALID_LOSS_THRESHOLD,
-            );
-        };
-
-        let order = TakeProfitOrStopLossOrder<C, I, D, F> {
-            id: object::new(ctx),
-            executed: false,
-            take_profit,
-            position_name,
-            threshold,
-            fee: coin::into_balance(fee),
-        };
-        let order_id = object::uid_to_inner(&order.id);
-
-        transfer::transfer(
-            OrderCap<C, I, D> { id: object::new(ctx), order_id },
-            owner,
-        );
-
-        transfer::share_object(order);
-
-        // emit order created
-        event::emit(OrderCreated { order_id });
-    }
-
     public entry fun execute_open_position_order<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -1037,17 +1015,23 @@ module abex_core::market {
         funding_fee_model: &FundingFeeModel,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
-        order: &mut OpenPositionOrder<C, I, D, F>,
+        owner: address,
+        order_id: address,
         ctx: &mut TxContext,
     ) {
-        assert!(!order.executed, ERR_ORDER_ALREADY_EXECUTED);
-
         let timestamp = clock::timestamp_ms(clock) / 1000;
-        let order_id = object::id(order);
-        let owner = order.owner;
         let executor = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
+
+        let order_name = OpenPositionOrderName<C, I, D, F> {
+            id: object::id_from_address(order_id),
+            owner,
+        };
+        let order: &mut OpenPositionOrder<C, F> = bag::borrow_mut(
+            &mut market.orders,
+            order_name,
+        );
 
         let vault: &mut Vault<C> = bag::borrow_mut(
             &mut market.vaults,
@@ -1063,50 +1047,23 @@ module abex_core::market {
             collateral_feeder,
             timestamp,
         );
-        assert!(
-            decimal::ge(
-                &agg_price::price_of(&collateral_price),
-                &order.collateral_price_threshold,
-            ),
-            ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD,
-        );
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
         );
-        if (long) {
-            assert!(
-                decimal::le(
-                    &agg_price::price_of(&index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
-                ERR_INDEX_PRICE_NOT_TRIGGERED,
-            );
-        } else {
-            assert!(
-                decimal::ge(
-                    &agg_price::price_of(&index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
-                ERR_INDEX_PRICE_NOT_TRIGGERED,
-            );
-        };
 
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
-        let (code, result, failure) = pool::open_position(
+        let (code, result, failure, fee) = orders::execute_open_position_order(
+            order,
             vault,
             symbol,
             reserving_fee_model,
             funding_fee_model,
-            &order.position_config,
             &collateral_price,
-            &order.limited_index_price,
-            &mut order.collateral,
+            &index_price,
             rebate_rate,
             long,
-            order.open_amount,
-            order.reserve_amount,
             lp_supply_amount,
             timestamp,
         );
@@ -1132,10 +1089,9 @@ module abex_core::market {
 
             // emit order executed and open opened
             event::emit(OrderExecuted {
-                order_id,
-                inner: PositionClaimed<C, I, D, OpenPositionSuccessEvent> {
-                    id: option::some(position_name.id),
-                    owner,
+                order_name,
+                claim: PositionClaimed<C, I, D, OpenPositionSuccessEvent> {
+                    position_name: option::some(position_name),
                     event,
                 },
             });
@@ -1146,23 +1102,15 @@ module abex_core::market {
             
             // emit order executed and open failed
             event::emit(OrderExecuted {
-                order_id,
-                inner: PositionClaimed<C, I, D, OpenPositionFailedEvent> {
-                    id: option::none(),
-                    owner,
+                order_name,
+                claim: PositionClaimed<C, I, D, OpenPositionFailedEvent> {
+                    position_name: option::none(),
                     event,
                 },
             });
         };
 
-        // update order status
-        order.executed = true;
-
-        pay_from_balance(
-            balance::withdraw_all(&mut order.fee),
-            executor,
-            ctx,
-        );
+        pay_from_balance(fee, executor, ctx);
     }
 
     public entry fun execute_decrease_position_order<L, C, I, D, F>(
@@ -1172,17 +1120,29 @@ module abex_core::market {
         funding_fee_model: &FundingFeeModel,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
-        order: &mut DecreasePositionOrder<C, I, D, F>,
+        owner: address,
+        order_id: address,
+        position_id: address,
         ctx: &mut TxContext,
     ) {
         let timestamp = clock::timestamp_ms(clock) / 1000;
-        let order_id = object::id(order);
         let executor = tx_context::sender(ctx);
-        let position_name = order.position_name;
-        let owner = position_name.owner;
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
-        
+
+        let position_name = PositionName<C, I, D> {
+            id: object::id_from_address(position_id),
+            owner,
+        };
+        let order_name = DecreasePositionOrderName<C, I, D, F> {
+            id: object::id_from_address(order_id),
+            position_name,
+        };
+        let order: &mut DecreasePositionOrder<F> = bag::borrow_mut(
+            &mut market.orders,
+            order_name,
+        );
+
         let vault: &mut Vault<C> = bag::borrow_mut(
             &mut market.vaults,
             VaultName<C> {},
@@ -1201,48 +1161,24 @@ module abex_core::market {
             collateral_feeder,
             timestamp,
         );
-        assert!(
-            decimal::ge(
-                &agg_price::price_of(&collateral_price),
-                &order.collateral_price_threshold,
-            ),
-            ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD,
-        );
         let index_price = agg_price::parse_pyth_feeder(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
         );
-        if (long) {
-            assert!(
-                decimal::ge(
-                    &agg_price::price_of(&index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
-                ERR_INDEX_PRICE_NOT_TRIGGERED,
-            );
-        } else {
-            assert!(
-                decimal::le(
-                    &agg_price::price_of(&index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
-                ERR_INDEX_PRICE_NOT_TRIGGERED,
-            );
-        };
 
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
-        let (code, result, failure) = pool::decrease_position(
+        let (code, result, failure, fee) = orders::execute_decrease_position_order(
+            order,
             vault,
             symbol,
             position,
             reserving_fee_model,
             funding_fee_model,
             &collateral_price,
-            &order.limited_index_price,
+            &index_price,
             rebate_rate,
             long,
-            order.decrease_amount,
             lp_supply_amount,
             timestamp,
         );
@@ -1256,10 +1192,9 @@ module abex_core::market {
 
             // emit order executed and position decreased
             event::emit(OrderExecuted {
-                order_id,
-                inner: PositionClaimed<C, I, D, DecreasePositionSuccessEvent> {
-                    id: option::some(position_name.id),
-                    owner,
+                order_name,
+                claim: PositionClaimed<C, I, D, DecreasePositionSuccessEvent> {
+                    position_name: option::some(position_name),
                     event,
                 },
             });
@@ -1270,43 +1205,46 @@ module abex_core::market {
 
             // emit order executed and decrease closed
             event::emit(OrderExecuted {
-                order_id,
-                inner: PositionClaimed<C, I, D, DecreasePositionFailedEvent> {
-                    id: option::some(position_name.id),
-                    owner,
+                order_name,
+                claim: PositionClaimed<C, I, D, DecreasePositionFailedEvent> {
+                    position_name: option::some(position_name),
                     event,
                 },
             });
         };
 
-        // update order status
-        order.executed = true;
-
-        pay_from_balance(
-            balance::withdraw_all(&mut order.fee),
-            executor,
-            ctx,
-        );
+        pay_from_balance(fee, executor, ctx);
     }
 
-    public entry fun execute_take_profit_or_stop_loss_order<L, C, I, D, F>(
+    public entry fun execute_trigger_position_order<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
         funding_fee_model: &FundingFeeModel,
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
-        order: &mut TakeProfitOrStopLossOrder<C, I, D, F>,
+        owner: address,
+        order_id: address,
+        position_id: address,
         ctx: &mut TxContext,
     ) {
         let timestamp = clock::timestamp_ms(clock) / 1000;
-        let order_id = object::id(order);
         let executor = tx_context::sender(ctx);
-        let take_profit = order.take_profit;
-        let position_name = order.position_name;
-        let owner = position_name.owner;
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
+
+        let position_name = PositionName<C, I, D> {
+            id: object::id_from_address(position_id),
+            owner,
+        };
+        let order_name = TriggerPositionOrderName<C, I, D, F> {
+            id: object::id_from_address(order_id),
+            position_name,
+        };
+        let order: &mut TriggerPositionOrder<F> = bag::borrow_mut(
+            &mut market.orders,
+            order_name,
+        );
 
         let vault: &mut Vault<C> = bag::borrow_mut(
             &mut market.vaults,
@@ -1333,9 +1271,8 @@ module abex_core::market {
         );
 
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
-        let decrease_amount = position::position_amount(position);
-        let collateral_amount = position::collateral_amount(position);
-        let (code, result, failure) = pool::decrease_position(
+        let (to_trader, rebate, event, fee) = orders::execute_trigger_position_order(
+            order,
             vault,
             symbol,
             position,
@@ -1345,72 +1282,42 @@ module abex_core::market {
             &index_price,
             rebate_rate,
             long,
-            decrease_amount,
             lp_supply_amount,
             timestamp,
         );
-        // should panic if close position failed
-        assert!(code == 0, code);
-
-        option::destroy_none(failure);
-        let (to_trader, rebate, event) =
-            pool::unwrap_decrease_position_result(option::destroy_some(result));
-
-        if (take_profit) {
-            assert!(
-                balance::value(&to_trader) >= order.threshold,
-                ERR_TAKE_PROFIT_NOT_TRIGGERED,
-            );
-        } else {
-            assert!(
-                balance::value(&to_trader) + order.threshold <= collateral_amount,
-                ERR_STOP_LOSS_NOT_TRIGGERED,
-            );
-        };
 
         pay_from_balance(to_trader, owner, ctx);
         pay_from_balance(rebate, referrer, ctx);
-        pay_from_balance(
-            balance::withdraw_all(&mut order.fee),
-            executor,
-            ctx,
-        );
+        pay_from_balance(fee, executor, ctx);
 
         // emit order executed and position closed
         event::emit(OrderExecuted {
-            order_id,
-            inner: PositionClaimed<C, I, D, DecreasePositionSuccessEvent> {
-                id: option::some(position_name.id),
-                owner,
+            order_name,
+            claim: PositionClaimed<C, I, D, DecreasePositionSuccessEvent> {
+                position_name: option::some(position_name),
                 event,
             },
         });
     }
 
-    public entry fun clear_open_position_order<C, I, D, F>(
-        order_cap: OrderCap<C, I, D>,
-        order: OpenPositionOrder<C, I, D, F>,
+    public entry fun clear_open_position_order<L, C, I, D, F>(
+        market: &mut Market<L>,
+        order_cap: OrderCap<C, I, D, F>,
         ctx: &mut TxContext,
     ) {
-        let OrderCap { id, order_id } = order_cap;
-        
-        object::delete(id);
+        let owner = tx_context::sender(ctx);
 
-        let OpenPositionOrder {
-            id,
-            executed: _,
-            owner,
-            open_amount: _,
-            reserve_amount: _,
-            limited_index_price: _,
-            collateral_price_threshold: _,
-            position_config: _,
-            collateral,
-            fee,
-        } = order;
-        // TODO: Is it necessary to check owner consistency?
-        assert!(owner == tx_context::sender(ctx), ERR_UNMATCHED_ORDER_OWNER);
-        assert!(order_id == object::uid_to_inner(&id), ERR_UNMATCHED_ORDER_ID);
+        let OrderCap { id, position_id } = order_cap;
+        option::destroy_none(position_id);
+
+        let order: OpenPositionOrder<C, F> = bag::remove(
+            &mut market.orders,
+            OpenPositionOrderName<C, I, D, F> {
+                id: object::uid_to_inner(&id),
+                owner,
+            },
+        );
+        let (collateral, fee) = orders::destroy_open_position_order(order);
 
         object::delete(id);
 
@@ -1418,63 +1325,60 @@ module abex_core::market {
         pay_from_balance(fee, owner, ctx);
     }
 
-    public entry fun clear_decrease_position_order<C, I, D, F>(
-        order_cap: OrderCap<C, I, D>,
-        order: DecreasePositionOrder<C, I, D, F>,
+    public entry fun clear_decrease_position_order<L, C, I, D, F>(
+        market: &mut Market<L>,
+        order_cap: OrderCap<C, I, D, F>,
         ctx: &mut TxContext,
     ) {
-        let OrderCap { id, order_id } = order_cap;
+        let owner = tx_context::sender(ctx);
 
-        object::delete(id);
+        let OrderCap { id, position_id } = order_cap;
+        let position_id = option::destroy_some(position_id);
+        let position_name = PositionName<C, I, D> {
+            id: position_id,
+            owner,
+        };
 
-        let DecreasePositionOrder {
-            id,
-            executed: _,
-            position_name,
-            decrease_amount: _,
-            limited_index_price: _,
-            collateral_price_threshold: _,
-            fee,
-        } = order;
-        // TODO: Is it necessary to check owner consistency?
-        assert!(
-            position_name.owner == tx_context::sender(ctx),
-            ERR_UNMATCHED_ORDER_OWNER,
+        let order: DecreasePositionOrder<F> = bag::remove(
+            &mut market.orders,
+            DecreasePositionOrderName<C, I, D, F> {
+                id: object::uid_to_inner(&id),
+                position_name,
+            },
         );
-        assert!(order_id == object::uid_to_inner(&id), ERR_UNMATCHED_ORDER_ID);
+        let fee = orders::destroy_decrease_position_order(order);
 
         object::delete(id);
 
-        pay_from_balance(fee, position_name.owner, ctx);
+        pay_from_balance(fee, owner, ctx);
     }
 
-    public entry fun clear_take_profit_or_stop_loss_order<C, I, D, F>(
-        order_cap: OrderCap<C, I, D>,
-        order: TakeProfitOrStopLossOrder<C, I, D, F>,
+    public entry fun clear_trigger_position_order<L, C, I, D, F>(
+        market: &mut Market<L>,
+        order_cap: OrderCap<C, I, D, F>,
         ctx: &mut TxContext,
     ) {
-        let OrderCap { id, order_id } = order_cap;
+        let owner = tx_context::sender(ctx);
 
-        object::delete(id);
+        let OrderCap { id, position_id } = order_cap;
+        let position_id = option::destroy_some(position_id);
+        let position_name = PositionName<C, I, D> {
+            id: position_id,
+            owner,
+        };
 
-        let TakeProfitOrStopLossOrder {
-            id,
-            executed: _,
-            take_profit: _,
-            position_name,
-            threshold: _,
-            fee,
-        } = order;
-        // TODO: Is it necessary to check owner consistency?
-        assert!(
-            position_name.owner == tx_context::sender(ctx),
-            ERR_UNMATCHED_ORDER_OWNER,
+        let order: TriggerPositionOrder<F> = bag::remove(
+            &mut market.orders,
+            TriggerPositionOrderName<C, I, D, F> {
+                id: object::uid_to_inner(&id),
+                position_name,
+            },
         );
-        assert!(order_id == object::uid_to_inner(&id), ERR_UNMATCHED_ORDER_ID);
+        let fee = orders::destroy_trigger_position_order(order);
 
         object::delete(id);
 
-        pay_from_balance(fee, position_name.owner, ctx);
+        pay_from_balance(fee, owner, ctx);
     }
 
     /// public write functions
