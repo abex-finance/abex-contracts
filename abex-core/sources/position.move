@@ -13,7 +13,7 @@ module abex_core::position {
     friend abex_core::pool;
     friend abex_core::market;
 
-    const OK: u64 = 0x0;
+    const OK: u64 = 0;
 
     const ERR_ALREADY_CLOSED: u64 = 1;
     const ERR_POSITION_NOT_CLOSED: u64 = 2;

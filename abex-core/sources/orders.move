@@ -19,7 +19,7 @@ module abex_core::orders {
 
     const ERR_ORDER_ALREADY_EXECUTED: u64 = 1;
     const ERR_ORDER_NOT_EXECUTED: u64 = 2;
-    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 2;
+    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 3;
     const ERR_INVALID_PROFIT_THRESHOLD: u64 = 4;
     const ERR_INVALID_LOSS_THRESHOLD: u64 = 5;
     const ERR_INVALID_DECREASE_AMOUNT: u64 = 6;
@@ -298,7 +298,7 @@ module abex_core::orders {
         let fee = balance::withdraw_all(&mut order.fee);
 
         let collateral_amount = position::collateral_amount(position);
-        let (code, result, failure) = pool::decrease_position(
+        let (code, result, _) = pool::decrease_position(
             vault,
             symbol,
             position,
@@ -316,7 +316,6 @@ module abex_core::orders {
         // should panic if close position failed
         assert!(code == 0, code);
 
-        option::destroy_none(failure);
         let (to_trader, rebate, event) =
             pool::unwrap_decrease_position_result(option::destroy_some(result));
 
