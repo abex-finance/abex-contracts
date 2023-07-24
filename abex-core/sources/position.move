@@ -793,7 +793,7 @@ module abex_core::position {
     }
 
     #[test_only]
-    fun default_position_config(): PositionConfig {
+    fun test_position_config(): PositionConfig {
         PositionConfig {
             max_leverage: 100,
             min_holding_duration: 30, // 30 seconds
@@ -805,6 +805,23 @@ module abex_core::position {
             liquidation_bonus: rate::from_percent(3), // 3%
         }
     }
+
+    // fun test_position<C>(): Position<C> {
+    //     Position {
+    //         closed: false,
+    //         config: test_position_config(),
+    //         open_timestamp: 0,
+    //         position_amount: 1_000_000_000,
+    //         position_size: decimal::from_u64(1_000), // 1000 USD
+    //         reserving_fee_amount: decimal::zero(),
+    //         funding_fee_value: sdecimal::zero(),
+            
+    //     }
+    // }
+
+    // fun test_compute_reserving_fee_amount() {
+        
+    // }
 
     // #[test]
     // fun test_update_dynamic_fee() {
