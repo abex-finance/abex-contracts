@@ -91,6 +91,10 @@ if [ -n "$ok" ]; then
        # modify field ".abex_core.positions_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.positions_parent = \"$positions_parent\""`
 
+       orders_parent=`echo "$deploy_log" | grep "orders_parent" | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # modify field ".abex_core.orders_parent" in $deployments
+       json_content=`echo "$json_content" | jq ".abex_core.orders_parent = \"$orders_parent\""`
+
        # clear vaults
        json_content=`echo "$json_content" | jq ".abex_core.vaults = {}"`
        # clear symbols
