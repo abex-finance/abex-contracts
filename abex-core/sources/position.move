@@ -13,7 +13,7 @@ module abex_core::position {
     friend abex_core::pool;
     friend abex_core::market;
 
-    const OK: u64 = 0x0;
+    const OK: u64 = 0;
 
     const ERR_ALREADY_CLOSED: u64 = 1;
     const ERR_POSITION_NOT_CLOSED: u64 = 2;
@@ -29,6 +29,7 @@ module abex_core::position {
     const ERR_LIQUIDATION_TRIGGERED: u64 = 12;
     const ERR_LIQUIDATION_NOT_TRIGGERED: u64 = 13;
     const ERR_EXCEED_MAX_RESERVED: u64 = 14;
+    const ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD: u64 = 15;
 
     // === Storage ===
 
@@ -119,6 +120,7 @@ module abex_core::position {
         index_price: &AggPrice,
         liquidity: &mut Balance<C>,
         collateral: &mut Balance<C>,
+        collateral_price_threshold: Decimal,
         open_amount: u64,
         reserve_amount: u64,
         reserving_rate: Rate,
@@ -128,12 +130,18 @@ module abex_core::position {
         if (balance::value(collateral) == 0) {
             return (ERR_INVALID_PLEDGE, option::none())
         };
+        if (
+            decimal::lt(
+                &agg_price::price_of(collateral_price),
+                &collateral_price_threshold,
+            )
+        ) {
+            return (ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD, option::none())
+        };
         if (open_amount == 0) {
             return (ERR_INVALID_OPEN_AMOUNT, option::none())
         };
-        if (
-            balance::value(collateral) * config.max_reserved_multiplier < reserve_amount
-        ) {
+        if (balance::value(collateral) * config.max_reserved_multiplier < reserve_amount) {
             return (ERR_EXCEED_MAX_RESERVED, option::none())
         };
 
@@ -213,6 +221,7 @@ module abex_core::position {
         position: &mut Position<C>,
         collateral_price: &AggPrice,
         index_price: &AggPrice,
+        collateral_price_threshold: Decimal,
         long: bool,
         decrease_amount: u64,
         reserving_rate: Rate,
@@ -221,6 +230,14 @@ module abex_core::position {
     ): (u64, Option<DecreasePositionResult<C>>) {
         if (position.closed) {
             return (ERR_ALREADY_CLOSED, option::none())
+        };
+        if (
+            decimal::lt(
+                &agg_price::price_of(collateral_price),
+                &collateral_price_threshold,
+            )
+        ) {
+            return (ERR_COLLATERAL_PRICE_EXCEED_THRESHOLD, option::none())
         };
         if (
             decrease_amount == 0 || decrease_amount > position.position_amount
@@ -776,7 +793,7 @@ module abex_core::position {
     }
 
     #[test_only]
-    fun default_position_config(): PositionConfig {
+    fun test_position_config(): PositionConfig {
         PositionConfig {
             max_leverage: 100,
             min_holding_duration: 30, // 30 seconds
@@ -788,6 +805,23 @@ module abex_core::position {
             liquidation_bonus: rate::from_percent(3), // 3%
         }
     }
+
+    // fun test_position<C>(): Position<C> {
+    //     Position {
+    //         closed: false,
+    //         config: test_position_config(),
+    //         open_timestamp: 0,
+    //         position_amount: 1_000_000_000,
+    //         position_size: decimal::from_u64(1_000), // 1000 USD
+    //         reserving_fee_amount: decimal::zero(),
+    //         funding_fee_value: sdecimal::zero(),
+            
+    //     }
+    // }
+
+    // fun test_compute_reserving_fee_amount() {
+        
+    // }
 
     // #[test]
     // fun test_update_dynamic_fee() {
