@@ -526,6 +526,7 @@ module abex_core::market {
                 position_id: option::none(),
             };
             let order = orders::new_open_position_order(
+                timestamp,
                 open_amount,
                 reserve_amount,
                 limited_index_price,
@@ -677,6 +678,7 @@ module abex_core::market {
                 position_id: option::some(position_name.id),
             };
             let order = orders::new_decrease_position_order(
+                timestamp,
                 take_profit,
                 decrease_amount,
                 limited_index_price,
