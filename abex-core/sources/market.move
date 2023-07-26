@@ -171,6 +171,10 @@ module abex_core::market {
         claim: PositionClaimed<C, I, D, E>,
     }
 
+    struct OrderCleared<N: copy + drop> has copy, drop {
+        order_name: N,
+    }
+
     // === Hot Potato ===
 
     struct VaultInfo has drop {
@@ -1195,17 +1199,18 @@ module abex_core::market {
 
         let OrderCap { id, position_id } = order_cap;
 
-        let order: OpenPositionOrder<C, F> = bag::remove(
-            &mut market.orders,
-            OrderName<C, I, D, F> {
-                id: object::uid_to_inner(&id),
-                owner,
-                position_id,
-            },
-        );
+        let order_name = OrderName<C, I, D, F> {
+            id: object::uid_to_inner(&id),
+            owner,
+            position_id,
+        };
+        let order: OpenPositionOrder<C, F> = bag::remove(&mut market.orders, order_name);
         let (collateral, fee) = orders::destroy_open_position_order(order);
 
         object::delete(id);
+
+        // emit order cleared
+        event::emit(OrderCleared { order_name });
 
         pay_from_balance(collateral, owner, ctx);
         pay_from_balance(fee, owner, ctx);
@@ -1220,17 +1225,18 @@ module abex_core::market {
 
         let OrderCap { id, position_id } = order_cap;
 
-        let order: DecreasePositionOrder<F> = bag::remove(
-            &mut market.orders,
-            OrderName<C, I, D, F> {
-                id: object::uid_to_inner(&id),
-                owner,
-                position_id,
-            },
-        );
+        let order_name = OrderName<C, I, D, F> {
+            id: object::uid_to_inner(&id),
+            owner,
+            position_id,
+        };
+        let order: DecreasePositionOrder<F> = bag::remove(&mut market.orders, order_name);
         let fee = orders::destroy_decrease_position_order(order);
 
         object::delete(id);
+
+        // emit order cleared
+        event::emit(OrderCleared { order_name });
 
         pay_from_balance(fee, owner, ctx);
     }

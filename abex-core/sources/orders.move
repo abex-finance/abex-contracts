@@ -19,9 +19,8 @@ module abex_core::orders {
 
     const ERR_MISMATCHED_DECREASE_INTENTION: u64 = 1;
     const ERR_ORDER_ALREADY_EXECUTED: u64 = 2;
-    const ERR_ORDER_NOT_EXECUTED: u64 = 3;
-    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 4;
-    const ERR_INVALID_DECREASE_AMOUNT: u64 = 5;
+    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 3;
+    const ERR_INVALID_DECREASE_AMOUNT: u64 = 4;
 
     struct OpenPositionOrder<phantom C, phantom F> has store {
         executed: bool,
@@ -144,7 +143,7 @@ module abex_core::orders {
         order: OpenPositionOrder<C, F>,
     ): (Balance<C>, Balance<F>) {
         let OpenPositionOrder {
-            executed,
+            executed: _,
             open_amount: _,
             reserve_amount: _,
             limited_index_price: _,
@@ -153,7 +152,6 @@ module abex_core::orders {
             collateral,
             fee,
         } = order;
-        assert!(executed, ERR_ORDER_NOT_EXECUTED);
 
         (collateral, fee)
     }
@@ -219,14 +217,13 @@ module abex_core::orders {
         order: DecreasePositionOrder<F>,
     ): Balance<F> {
         let DecreasePositionOrder {
-            executed,
+            executed: _,
             take_profit: _,
             decrease_amount: _,
             limited_index_price: _,
             collateral_price_threshold: _,
             fee,
         } = order;
-        assert!(executed, ERR_ORDER_NOT_EXECUTED);
 
         fee
     }

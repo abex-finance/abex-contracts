@@ -967,7 +967,7 @@ module abex_core::pool {
         sdecimal::add(delta_size, symbol.unrealised_funding_fee_value)
     }
 
-    //////////////////////////// public read functions ////////////////////////////
+    // === public read functions ===
 
     public fun vault_enabled<C>(vault: &Vault<C>): bool {
         vault.enabled
