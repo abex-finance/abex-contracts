@@ -201,19 +201,18 @@ module abex_core::market {
     // === Errors ===
     // perpetual trading errors
     const ERR_INVALID_DIRECTION: u64 = 1;
-    const ERR_CAN_NOT_CREATE_LIMIT_ORDER: u64 = 2;
+    const ERR_CAN_NOT_CREATE_ORDER: u64 = 2;
     const ERR_CAN_NOT_TRADE_IMMEDIATELY: u64 = 3;
-    const ERR_MISMATCHED_DECREASE_INTENTION: u64 = 4;
     // deposit, withdraw and swap errors
-    const ERR_VAULT_ALREADY_HANDLED: u64 = 5;
-    const ERR_SYMBOL_ALREADY_HANDLED: u64 = 6;
-    const ERR_VAULTS_NOT_TOTALLY_HANDLED: u64 = 7;
-    const ERR_SYMBOLS_NOT_TOTALLY_HANDLED: u64 = 8;
-    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 9;
-    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 10;
-    const ERR_SWAPPING_SAME_COINS: u64 = 11;
+    const ERR_VAULT_ALREADY_HANDLED: u64 = 4;
+    const ERR_SYMBOL_ALREADY_HANDLED: u64 = 5;
+    const ERR_VAULTS_NOT_TOTALLY_HANDLED: u64 = 6;
+    const ERR_SYMBOLS_NOT_TOTALLY_HANDLED: u64 = 7;
+    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 8;
+    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 9;
+    const ERR_SWAPPING_SAME_COINS: u64 = 10;
     // referral errors
-    const ERR_ALREADY_HAS_REFERRAL: u64 = 12;
+    const ERR_ALREADY_HAS_REFERRAL: u64 = 11;
 
     // === internal functions ===
 
@@ -517,7 +516,7 @@ module abex_core::market {
         };
 
         if (placed) {
-            assert!(trade_level < 2, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
+            assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
             let order_id = object::new(ctx);
             let order_name = OrderName<C, I, D, F> {
@@ -621,7 +620,7 @@ module abex_core::market {
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         fee: Coin<F>,
-        trade_level: u8,
+        trade_level: u8,  // 0: not, 1: allowed, 2: must
         take_profit: bool,
         decrease_amount: u64,
         collateral_price_threshold: u256,
@@ -667,9 +666,12 @@ module abex_core::market {
             )
         };
 
-        if (placed || take_profit) {
-            assert!(trade_level < 2, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
-            assert!(placed != take_profit, ERR_MISMATCHED_DECREASE_INTENTION);
+        // Decrease order is allowed to create:
+        // 1: limit order can be placed
+        // 2: limit order can not placed, but it is a stop loss for long or
+        //         take profit for short
+        if (placed || (long != take_profit)) {
+            assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
             let order_id = object::new(ctx);
             let order_name = OrderName<C, I, D, F> {
