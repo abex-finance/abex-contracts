@@ -668,9 +668,8 @@ module abex_core::market {
 
         // Decrease order is allowed to create:
         // 1: limit order can be placed
-        // 2: limit order can not placed, but it is a stop loss for long or
-        //         take profit for short
-        if (placed || (long != take_profit)) {
+        // 2: limit order can not placed, but it must be a stop loss order
+        if (placed || !take_profit) {
             assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
             let order_id = object::new(ctx);
