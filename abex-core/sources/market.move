@@ -475,7 +475,7 @@ module abex_core::market {
         index_feeder: &PythFeeder,
         collateral: Coin<C>,
         fee: Coin<F>,
-        allow_trade: bool,
+        trade_level: u8, // 0: not, 1: allowed, 2: must
         open_amount: u64,
         reserve_amount: u64,
         collateral_price_threshold: u256,
@@ -516,8 +516,39 @@ module abex_core::market {
             )
         };
 
-        if (allow_trade) {
-            assert!(!placed, ERR_CAN_NOT_TRADE_IMMEDIATELY);
+        if (placed) {
+            assert!(trade_level < 2, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
+
+            let order_id = object::new(ctx);
+            let order_name = OrderName<C, I, D, F> {
+                id: object::uid_to_inner(&order_id),
+                owner,
+                position_id: option::none(),
+            };
+            let order = orders::new_open_position_order(
+                open_amount,
+                reserve_amount,
+                limited_index_price,
+                collateral_price_threshold,
+                position_config.inner,
+                coin::into_balance(collateral),
+                coin::into_balance(fee),
+            );
+
+            bag::add(&mut market.orders, order_name, order);
+
+            transfer::transfer(
+                OrderCap<C, I, D, F> {
+                    id: order_id,
+                    position_id: order_name.position_id,
+                },
+                owner,
+            );
+
+            // emit order created
+            event::emit(OrderCreated { order_name });
+        } else {
+            assert!(trade_level > 0, ERR_CAN_NOT_TRADE_IMMEDIATELY);
 
             let vault: &mut Vault<C> = bag::borrow_mut(
                 &mut market.vaults,
@@ -577,37 +608,6 @@ module abex_core::market {
                 position_name: option::some(position_name),
                 event,
             });
-        } else {
-            assert!(placed, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
-
-            let order_id = object::new(ctx);
-            let order_name = OrderName<C, I, D, F> {
-                id: object::uid_to_inner(&order_id),
-                owner,
-                position_id: option::none(),
-            };
-            let order = orders::new_open_position_order(
-                open_amount,
-                reserve_amount,
-                limited_index_price,
-                collateral_price_threshold,
-                position_config.inner,
-                coin::into_balance(collateral),
-                coin::into_balance(fee),
-            );
-
-            bag::add(&mut market.orders, order_name, order);
-
-            transfer::transfer(
-                OrderCap<C, I, D, F> {
-                    id: order_id,
-                    position_id: order_name.position_id,
-                },
-                owner,
-            );
-
-            // emit order created
-            event::emit(OrderCreated { order_name });
         }
     }
 
@@ -620,7 +620,7 @@ module abex_core::market {
         collateral_feeder: &PythFeeder,
         index_feeder: &PythFeeder,
         fee: Coin<F>,
-        allow_trade: bool,
+        trade_level: u8,
         take_profit: bool,
         decrease_amount: u64,
         collateral_price_threshold: u256,
@@ -666,9 +666,39 @@ module abex_core::market {
             )
         };
 
-        if (allow_trade) {
-            assert!(!placed, ERR_CAN_NOT_TRADE_IMMEDIATELY);
-            
+        if (placed || take_profit) {
+            assert!(trade_level < 2, ERR_CAN_NOT_CREATE_LIMIT_ORDER);
+            assert!(placed != take_profit, ERR_MISMATCHED_DECREASE_INTENTION);
+
+            let order_id = object::new(ctx);
+            let order_name = OrderName<C, I, D, F> {
+                id: object::uid_to_inner(&order_id),
+                owner,
+                position_id: option::some(position_name.id),
+            };
+            let order = orders::new_decrease_position_order(
+                take_profit,
+                decrease_amount,
+                limited_index_price,
+                collateral_price_threshold,
+                coin::into_balance(fee),
+            );
+
+            bag::add(&mut market.orders, order_name, order);
+
+            transfer::transfer(
+                OrderCap<C, I, D, F> {
+                    id: order_id,
+                    position_id: order_name.position_id,    
+                },
+                owner,
+            );
+
+            // emit order created
+            event::emit(OrderCreated { order_name });
+        } else {
+            assert!(trade_level > 0, ERR_CAN_NOT_TRADE_IMMEDIATELY);
+
             let vault: &mut Vault<C> = bag::borrow_mut(
                 &mut market.vaults,
                 VaultName<C> {},
@@ -716,35 +746,6 @@ module abex_core::market {
                 position_name: option::some(position_name),
                 event,
             });
-        } else {
-            assert!(take_profit == placed, ERR_MISMATCHED_DECREASE_INTENTION);
-
-            let order_id = object::new(ctx);
-            let order_name = OrderName<C, I, D, F> {
-                id: object::uid_to_inner(&order_id),
-                owner,
-                position_id: option::some(position_name.id),
-            };
-            let order = orders::new_decrease_position_order(
-                take_profit,
-                decrease_amount,
-                limited_index_price,
-                collateral_price_threshold,
-                coin::into_balance(fee),
-            );
-
-            bag::add(&mut market.orders, order_name, order);
-
-            transfer::transfer(
-                OrderCap<C, I, D, F> {
-                    id: order_id,
-                    position_id: order_name.position_id,    
-                },
-                owner,
-            );
-
-            // emit order created
-            event::emit(OrderCreated { order_name });
         }
     }
 
