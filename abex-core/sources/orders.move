@@ -24,6 +24,7 @@ module abex_core::orders {
 
     struct OpenPositionOrder<phantom C, phantom F> has store {
         executed: bool,
+        created_at: u64,
         open_amount: u64,
         reserve_amount: u64,
         limited_index_price: AggPrice,
@@ -35,6 +36,7 @@ module abex_core::orders {
 
     struct DecreasePositionOrder<phantom F> has store {
         executed: bool,
+        created_at: u64,
         take_profit: bool,
         decrease_amount: u64,
         limited_index_price: AggPrice,
@@ -43,6 +45,7 @@ module abex_core::orders {
     }
 
     public(friend) fun new_open_position_order<C, F>(
+        timestamp: u64,
         open_amount: u64,
         reserve_amount: u64,
         limited_index_price: AggPrice,
@@ -53,6 +56,7 @@ module abex_core::orders {
     ): OpenPositionOrder<C, F> {
         OpenPositionOrder {
             executed: false,
+            created_at: timestamp,
             open_amount,
             reserve_amount,
             limited_index_price,
@@ -64,6 +68,7 @@ module abex_core::orders {
     }
 
     public(friend) fun new_decrease_position_order<F>(
+        timestamp: u64,
         take_profit: bool,
         decrease_amount: u64,
         limited_index_price: AggPrice,
@@ -72,6 +77,7 @@ module abex_core::orders {
     ): DecreasePositionOrder<F> {
         DecreasePositionOrder {
             executed: false,
+            created_at: timestamp,
             take_profit,
             decrease_amount,
             limited_index_price,
@@ -144,6 +150,7 @@ module abex_core::orders {
     ): (Balance<C>, Balance<F>) {
         let OpenPositionOrder {
             executed: _,
+            created_at: _,
             open_amount: _,
             reserve_amount: _,
             limited_index_price: _,
@@ -218,6 +225,7 @@ module abex_core::orders {
     ): Balance<F> {
         let DecreasePositionOrder {
             executed: _,
+            created_at: _,
             take_profit: _,
             decrease_amount: _,
             limited_index_price: _,
