@@ -27,16 +27,8 @@ module abex_core::market {
     use abex_core::model::{
         Self, RebaseFeeModel, ReservingFeeModel, FundingFeeModel,
     };
-    use abex_core::orders::{
-        Self, OpenPositionOrder, DecreasePositionOrder,
-    };
-    use abex_core::pool::{
-        Self, Vault, Symbol,
-        OpenPositionSuccessEvent, OpenPositionFailedEvent,
-        DecreasePositionSuccessEvent, DecreasePositionFailedEvent,
-        PledgeInPositionEvent, DecreaseReservedFromPositionEvent,
-        RedeemFromPositionEvent, LiquidatePositionEvent,
-    };
+    use abex_core::orders::{Self, OpenPositionOrder, DecreasePositionOrder};
+    use abex_core::pool::{Self, Vault, Symbol};
 
     friend abex_core::alp;
 
@@ -45,6 +37,9 @@ module abex_core::market {
     /// `Market` is the core storage of the protocol.
     struct Market<phantom L> has key {
         id: UID,
+
+        vaults_locked: bool,
+        symbols_locked: bool,
 
         rebate_rate: Rate,
         rebase_fee_model: ID,
@@ -123,13 +118,16 @@ module abex_core::market {
         orders_parent: ID,
     }
 
-    struct PositionClaimed<
-        phantom C,
-        phantom I,
-        phantom D,
-        E: copy + drop,
-    > has copy, drop {
-        position_name: Option<PositionName<C, I, D>>,
+    struct VaultCreated<phantom C> has copy, drop {}
+
+    struct SymbolCreated<phantom I, phantom D> has copy, drop {}
+
+    struct CollateralAdded<phantom C, phantom I, phantom D> has copy, drop {}
+
+    struct CollateralRemoved<phantom C, phantom I, phantom D> has copy, drop {}
+
+    struct PositionClaimed<N: copy + drop, E: copy + drop> has copy, drop {
+        position_name: Option<N>,
         event: E,
     }
 
@@ -155,32 +153,27 @@ module abex_core::market {
         dest_amount: u64,
     }
 
-    struct OrderCreated<N: copy + drop> has copy, drop {
+    struct OrderCreated<N: copy + drop, E: copy + drop> has copy, drop {
         order_name: N,
+        event: E,
     }
 
-    struct OrderExecuted<
-        phantom C,
-        phantom I,
-        phantom D,
-        E: copy + drop,
-        N: copy + drop,
-    > has copy, drop {
+    struct OrderExecuted<N: copy + drop, PC: copy + drop> has copy, drop {
         executor: address,
         order_name: N,
-        claim: PositionClaimed<C, I, D, E>,
+        claim: PC,
     }
 
     struct OrderCleared<N: copy + drop> has copy, drop {
         order_name: N,
     }
 
-    // === Hot Potato ===
-
     struct VaultInfo has drop {
         price: AggPrice,
         value: Decimal,
     }
+
+    // === Hot Potato ===
 
     struct VaultsValuation {
         timestamp: u64,
@@ -199,6 +192,8 @@ module abex_core::market {
     }
 
     // === Errors ===
+    // common errors
+    const ERR_MARKET_ALREADY_LOCKED: u64 = 0;
     // perpetual trading errors
     const ERR_INVALID_DIRECTION: u64 = 1;
     const ERR_CAN_NOT_CREATE_ORDER: u64 = 2;
@@ -215,14 +210,6 @@ module abex_core::market {
     const ERR_ALREADY_HAS_REFERRAL: u64 = 11;
 
     // === internal functions ===
-
-    fun mint_lp<L>(market: &mut Market<L>, amount: u64): Balance<L> {
-        balance::increase_supply(&mut market.lp_supply, amount)
-    }
-
-    fun burn_lp<L>(market: &mut Market<L>, token: Balance<L>): u64 {
-        balance::decrease_supply(&mut market.lp_supply, token)
-    }
 
     fun pay_from_balance<T>(
         balance: Balance<T>,
@@ -248,7 +235,8 @@ module abex_core::market {
         }
     }
 
-    fun finalize_vaults_valuation(
+    fun finalize_vaults_valuation<L>(
+        market: &mut Market<L>,
         valuation: VaultsValuation,
     ): (VecMap<TypeName, VaultInfo>, Decimal, Decimal) {
         let VaultsValuation {
@@ -259,11 +247,16 @@ module abex_core::market {
             value,
         } = valuation;
         assert!(vec_map::size(&handled) == num, ERR_VAULTS_NOT_TOTALLY_HANDLED);
+        // release vaults
+        market.vaults_locked = false;
 
         (handled, total_weight, value)
     }
 
-    fun finalize_symbols_valuation(valuation: SymbolsValuation): SDecimal {
+    fun finalize_symbols_valuation<L>(
+        market: &mut Market<L>,
+        valuation: SymbolsValuation,
+    ): SDecimal {
         let SymbolsValuation {
             timestamp: _,
             num,
@@ -272,11 +265,14 @@ module abex_core::market {
             value,
         } = valuation;
         assert!(vec_set::size(&handled) == num, ERR_SYMBOLS_NOT_TOTALLY_HANDLED);
+        // release symbols
+        market.symbols_locked = false;
 
         value
     }
 
-    fun finalize_market_valuation(
+    fun finalize_market_valuation<L>(
+        market: &mut Market<L>,
         vaults_valuation: VaultsValuation,
         symbols_valuation: SymbolsValuation,
     ): (
@@ -286,8 +282,9 @@ module abex_core::market {
         Decimal,
     ) {
         let (handled_vaults, total_weight, total_vaults_value) =
-            finalize_vaults_valuation(vaults_valuation);
-        let total_symbols_value = finalize_symbols_valuation(symbols_valuation);
+            finalize_vaults_valuation(market, vaults_valuation);
+        let total_symbols_value =
+            finalize_symbols_valuation(market, symbols_valuation);
 
         let market_value = sdecimal::add_with_decimal(
             total_symbols_value,
@@ -318,6 +315,8 @@ module abex_core::market {
 
         let market = Market {
             id: object::new(ctx),
+            vaults_locked: false,
+            symbols_locked: false,
             rebate_rate,
             rebase_fee_model: model_id,
             referrals: table::new(ctx),
@@ -366,6 +365,9 @@ module abex_core::market {
             ),
         );
         bag::add(&mut market.vaults, VaultName<C> {}, vault);
+        
+        // emit vault created
+        event::emit(VaultCreated<C> {});
     }
 
     public entry fun add_new_symbol<L, I, D>(
@@ -422,6 +424,9 @@ module abex_core::market {
             ),
         );
         bag::add(&mut market.symbols, SymbolName<I, D> {}, symbol);
+
+        // emit symbol created
+        event::emit(SymbolCreated<I, D> {});
     }
 
     public entry fun add_collateral_to_symbol<L, C, I, D>(
@@ -434,8 +439,26 @@ module abex_core::market {
             SymbolName<I, D> {},
         );
         pool::add_collateral_to_symbol<C>(symbol);
+
+        // emit collateral added
+        event::emit(CollateralAdded<C, I, D> {});
     }
 
+    public entry fun remove_collateral_from_symbol<L, C, I, D>(
+        _a: &AdminCap,
+        market: &mut Market<L>,
+        _ctx: &mut TxContext,
+    ) {
+        let symbol: &mut Symbol = bag::borrow_mut(
+            &mut market.symbols,
+            SymbolName<I, D> {},
+        );
+        pool::remove_collateral_from_symbol<C>(symbol);
+
+        // emit collateral removed
+        event::emit(CollateralRemoved<C, I, D> {});
+    }
+    
     public entry fun add_new_referral<L>(
         market: &mut Market<L>,
         referrer: address,
@@ -452,18 +475,6 @@ module abex_core::market {
         table::add(&mut market.referrals, owner, referral);
     }
 
-    public entry fun remove_collateral_from_symbol<L, C, I, D>(
-        _a: &AdminCap,
-        market: &mut Market<L>,
-        _ctx: &mut TxContext,
-    ) {
-        let symbol: &mut Symbol = bag::borrow_mut(
-            &mut market.symbols,
-            SymbolName<I, D> {},
-        );
-        pool::remove_collateral_from_symbol<C>(symbol);
-    }
-    
     public entry fun open_position<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -481,6 +492,8 @@ module abex_core::market {
         limited_index_price: u256,
         ctx: &mut TxContext,
     ) {
+        assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -524,7 +537,7 @@ module abex_core::market {
                 owner,
                 position_id: option::none(),
             };
-            let order = orders::new_open_position_order(
+            let (order, event) = orders::new_open_position_order(
                 timestamp,
                 open_amount,
                 reserve_amount,
@@ -546,7 +559,7 @@ module abex_core::market {
             );
 
             // emit order created
-            event::emit(OrderCreated { order_name });
+            event::emit(OrderCreated { order_name, event });
         } else {
             assert!(trade_level > 0, ERR_CAN_NOT_TRADE_IMMEDIATELY);
 
@@ -604,7 +617,7 @@ module abex_core::market {
             transfer::public_transfer(fee, owner);
 
             // emit position opened
-            event::emit(PositionClaimed<C, I, D, OpenPositionSuccessEvent> {
+            event::emit(PositionClaimed {
                 position_name: option::some(position_name),
                 event,
             });
@@ -627,6 +640,8 @@ module abex_core::market {
         limited_index_price: u256,
         ctx: &mut TxContext,
     ) {
+        assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -678,7 +693,7 @@ module abex_core::market {
                 owner,
                 position_id: option::some(position_name.id),
             };
-            let order = orders::new_decrease_position_order(
+            let (order, event) = orders::new_decrease_position_order(
                 timestamp,
                 take_profit,
                 decrease_amount,
@@ -698,7 +713,7 @@ module abex_core::market {
             );
 
             // emit order created
-            event::emit(OrderCreated { order_name });
+            event::emit(OrderCreated { order_name, event });
         } else {
             assert!(trade_level > 0, ERR_CAN_NOT_TRADE_IMMEDIATELY);
 
@@ -745,7 +760,7 @@ module abex_core::market {
             transfer::public_transfer(fee, owner);
 
             // emit decrease position
-            event::emit(PositionClaimed<C, I, D, DecreasePositionSuccessEvent> {
+            event::emit(PositionClaimed {
                 position_name: option::some(position_name),
                 event,
             });
@@ -786,20 +801,18 @@ module abex_core::market {
         );
 
         // emit decrease reserved from position
-        event::emit(PositionClaimed<C, I, D, DecreaseReservedFromPositionEvent> {
+        event::emit(PositionClaimed {
             position_name: option::some(position_name),
             event,
         });
     }
 
     public entry fun pledge_in_position<L, C, I, D>(
-        clock: &Clock,
         market: &mut Market<L>,
         position_cap: &PositionCap<C, I, D>,
         pledge: Coin<C>,
         ctx: &mut TxContext,
     ) {
-        let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
 
         let position_name = PositionName<C, I, D> {
@@ -811,14 +824,10 @@ module abex_core::market {
             position_name,
         );
 
-        let event = pool::pledge_in_position(
-            position,
-            coin::into_balance(pledge),
-            timestamp,
-        );
+        let event = pool::pledge_in_position(position, coin::into_balance(pledge));
 
         // emit pledge in position
-        event::emit(PositionClaimed<C, I, D, PledgeInPositionEvent> {
+        event::emit(PositionClaimed {
             position_name: option::some(position_name),
             event,
         });
@@ -835,6 +844,8 @@ module abex_core::market {
         redeem_amount: u64,
         ctx: &mut TxContext,
     ) {
+        assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+        
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -886,7 +897,7 @@ module abex_core::market {
         pay_from_balance(redeem, owner, ctx);
 
         // emit redeem from position
-        event::emit(PositionClaimed<C, I, D, RedeemFromPositionEvent> {
+        event::emit(PositionClaimed {
             position_name: option::some(position_name),
             event,
         });
@@ -903,6 +914,8 @@ module abex_core::market {
         position_id: address,
         ctx: &mut TxContext,
     ) {
+        assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let liquidator = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -954,7 +967,7 @@ module abex_core::market {
         pay_from_balance(liquidation_fee, liquidator, ctx);
 
         // emit liquidate position
-        event::emit(PositionClaimed<C, I, D, LiquidatePositionEvent> {
+        event::emit(PositionClaimed {
             position_name: option::some(position_name),
             event,
         });
@@ -992,6 +1005,8 @@ module abex_core::market {
         order_id: address,
         ctx: &mut TxContext,
     ) {
+        assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let executor = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -1064,7 +1079,7 @@ module abex_core::market {
             event::emit(OrderExecuted {
                 executor,
                 order_name,
-                claim: PositionClaimed<C, I, D, OpenPositionSuccessEvent> {
+                claim: PositionClaimed {
                     position_name: option::some(position_name),
                     event,
                 },
@@ -1078,8 +1093,8 @@ module abex_core::market {
             event::emit(OrderExecuted {
                 executor,
                 order_name,
-                claim: PositionClaimed<C, I, D, OpenPositionFailedEvent> {
-                    position_name: option::none(),
+                claim: PositionClaimed {
+                    position_name: option::none<PositionName<C, I, D>>(),
                     event,
                 },
             });
@@ -1100,6 +1115,8 @@ module abex_core::market {
         position_id: address,
         ctx: &mut TxContext,
     ) {
+        assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+        
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let executor = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -1169,7 +1186,7 @@ module abex_core::market {
             event::emit(OrderExecuted {
                 executor,
                 order_name,
-                claim: PositionClaimed<C, I, D, DecreasePositionSuccessEvent> {
+                claim: PositionClaimed {
                     position_name: option::some(position_name),
                     event,
                 },
@@ -1183,7 +1200,7 @@ module abex_core::market {
             event::emit(OrderExecuted {
                 executor,
                 order_name,
-                claim: PositionClaimed<C, I, D, DecreasePositionFailedEvent> {
+                claim: PositionClaimed {
                     position_name: option::some(position_name),
                     event,
                 },
@@ -1268,7 +1285,7 @@ module abex_core::market {
             total_weight,
             total_vaults_value,
             market_value,
-        ) = finalize_market_valuation(vaults_valuation, symbols_valuation);
+        ) = finalize_market_valuation(market, vaults_valuation, symbols_valuation);
         let (_, VaultInfo { price, value: vault_value }) = vec_map::remove(
             &mut handled_vaults,
             &type_name::get<VaultName<C>>(),
@@ -1290,7 +1307,7 @@ module abex_core::market {
         );
 
         // mint to sender
-        let minted = mint_lp(market, mint_amount);
+        let minted = balance::increase_supply(&mut market.lp_supply, mint_amount);
         pay_from_balance(minted, minter, ctx);
 
         // emit deposited
@@ -1323,7 +1340,7 @@ module abex_core::market {
             total_weight,
             total_vaults_value,
             market_value,
-        ) = finalize_market_valuation(vaults_valuation, symbols_valuation);
+        ) = finalize_market_valuation(market, vaults_valuation, symbols_valuation);
         let (_, VaultInfo { price, value: vault_value }) = vec_map::remove(
             &mut handled_vaults,
             &type_name::get<VaultName<C>>(),
@@ -1383,7 +1400,7 @@ module abex_core::market {
         let swapper = tx_context::sender(ctx);
         let source_amount = coin::value(&source);
         let (handled_vaults, total_weight, total_vaults_value) =
-            finalize_vaults_valuation(vaults_valuation);
+            finalize_vaults_valuation(market, vaults_valuation);
         let (_, VaultInfo { price: source_price, value: source_vault_value }) =
             vec_map::remove(&mut handled_vaults, &type_name::get<VaultName<S>>());
         let (_, VaultInfo { price: dest_price, value: dest_vault_value }) =
@@ -1427,8 +1444,12 @@ module abex_core::market {
 
     public fun create_vaults_valuation<L>(
         clock: &Clock,
-        market: &Market<L>,
+        market: &mut Market<L>,
     ): VaultsValuation {
+        assert!(!market.vaults_locked, ERR_MARKET_ALREADY_LOCKED);
+        // lock to avoid re-valuation
+        market.vaults_locked = true;
+
         VaultsValuation {
             timestamp: clock::timestamp_ms(clock) / 1000,
             num: bag::length(&market.vaults),
@@ -1440,8 +1461,12 @@ module abex_core::market {
 
     public fun create_symbols_valuation<L>(
         clock: &Clock,
-        market: &Market<L>,
+        market: &mut Market<L>,
     ): SymbolsValuation {
+        assert!(!market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+        // lock to avoid re-valuation
+        market.symbols_locked = true;
+
         SymbolsValuation {
             timestamp: clock::timestamp_ms(clock) / 1000,
             num: bag::length(&market.symbols),
