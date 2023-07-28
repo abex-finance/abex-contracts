@@ -69,7 +69,6 @@ module abex_core::pool {
     // === Position Events ===
 
     struct OpenPositionSuccessEvent has copy, drop {
-        timestamp: u64,
         position_config: PositionConfig,
         collateral_price: Decimal,
         index_price: Decimal,
@@ -80,7 +79,6 @@ module abex_core::pool {
     }
 
     struct OpenPositionFailedEvent has copy, drop {
-        timestamp: u64,
         position_config: PositionConfig,
         collateral_price: Decimal,
         index_price: Decimal,
@@ -90,7 +88,6 @@ module abex_core::pool {
     }
 
     struct DecreasePositionSuccessEvent has copy, drop {
-        timestamp: u64,
         collateral_price: Decimal,
         index_price: Decimal,
         decrease_amount: u64,
@@ -103,7 +100,6 @@ module abex_core::pool {
     }
 
     struct DecreasePositionFailedEvent has copy, drop {
-        timestamp: u64,
         collateral_price: Decimal,
         index_price: Decimal,
         decrease_amount: u64,
@@ -111,22 +107,20 @@ module abex_core::pool {
     }
 
     struct DecreaseReservedFromPositionEvent has copy, drop {
-        timestamp: u64,
         decrease_amount: u64,
     }
 
     struct PledgeInPositionEvent has copy, drop {
-        timestamp: u64,
         pledge_amount: u64,
     }
 
     struct RedeemFromPositionEvent has copy, drop {
-        timestamp: u64,
+        collateral_price: Decimal,
+        index_price: Decimal,
         redeem_amount: u64,
     }
 
     struct LiquidatePositionEvent has copy, drop {
-        timestamp: u64,
         liquidator: address,
         collateral_price: Decimal,
         index_price: Decimal,
@@ -506,7 +500,6 @@ module abex_core::pool {
             option::destroy_none(result);
             
             let event = OpenPositionFailedEvent {
-                timestamp,
                 position_config: *position_config,
                 collateral_price: agg_price::price_of(collateral_price),
                 index_price: agg_price::price_of(index_price),
@@ -542,7 +535,6 @@ module abex_core::pool {
             position,
             rebate,
             event: OpenPositionSuccessEvent {
-                timestamp,
                 position_config: *position_config,
                 collateral_price: agg_price::price_of(collateral_price),
                 index_price: agg_price::price_of(index_price),
@@ -625,7 +617,6 @@ module abex_core::pool {
             option::destroy_none(result);
 
             let event = DecreasePositionFailedEvent {
-                timestamp,
                 collateral_price: agg_price::price_of(collateral_price),
                 index_price: agg_price::price_of(index_price),
                 decrease_amount,
@@ -689,7 +680,6 @@ module abex_core::pool {
             to_trader,
             rebate,
             event: DecreasePositionSuccessEvent {
-                timestamp,
                 collateral_price: agg_price::price_of(collateral_price),
                 index_price: agg_price::price_of(index_price),
                 decrease_amount,
@@ -744,26 +734,19 @@ module abex_core::pool {
         vault.reserved_amount = vault.reserved_amount - balance::value(&decreased_reserved);
         let _ = balance::join(&mut vault.liquidity, decreased_reserved);
 
-        DecreaseReservedFromPositionEvent {
-            timestamp,
-            decrease_amount,
-        }
+        DecreaseReservedFromPositionEvent { decrease_amount }
     }
 
     public(friend) fun pledge_in_position<C>(
         position: &mut Position<C>,
         pledge: Balance<C>,
-        timestamp: u64,
     ): PledgeInPositionEvent {
         let pledge_amount = balance::value(&pledge);
         position::pledge_in_position(position, pledge);
 
         // there is no need to refresh vault and symbol here
 
-        PledgeInPositionEvent {
-            timestamp,
-            pledge_amount,
-        }
+        PledgeInPositionEvent { pledge_amount }
     }
 
     public(friend) fun redeem_from_position<C>(
@@ -814,8 +797,9 @@ module abex_core::pool {
         );
 
         let event = RedeemFromPositionEvent {
-            timestamp,
-            redeem_amount,
+            collateral_price: agg_price::price_of(collateral_price),
+            index_price: agg_price::price_of(index_price),
+            redeem_amount,    
         };
 
         (redeem, event)
@@ -909,7 +893,6 @@ module abex_core::pool {
         );
 
         let event = LiquidatePositionEvent {
-            timestamp,
             liquidator,
             collateral_price: agg_price::price_of(collateral_price),
             index_price: agg_price::price_of(index_price),

@@ -17,10 +17,8 @@ module abex_core::orders {
 
     friend abex_core::market;
 
-    const ERR_MISMATCHED_DECREASE_INTENTION: u64 = 1;
-    const ERR_ORDER_ALREADY_EXECUTED: u64 = 2;
-    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 3;
-    const ERR_INVALID_DECREASE_AMOUNT: u64 = 4;
+    const ERR_ORDER_ALREADY_EXECUTED: u64 = 1;
+    const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 2;
 
     struct OpenPositionOrder<phantom C, phantom F> has store {
         executed: bool,
@@ -44,6 +42,26 @@ module abex_core::orders {
         fee: Balance<F>,
     }
 
+    // === Events ===
+
+    struct CreateOpenPositionOrderEvent has copy, drop {
+        open_amount: u64,
+        reserve_amount: u64,
+        limited_index_price: Decimal,
+        collateral_price_threshold: Decimal,
+        position_config: PositionConfig,
+        collateral_amount: u64,
+        fee_amount: u64,
+    }
+
+    struct CreateDecreasePositionOrderEvent has copy, drop {
+        take_profit: bool,
+        decrease_amount: u64,
+        limited_index_price: Decimal,
+        collateral_price_threshold: Decimal,
+        fee_amount: u64,
+    }
+
     public(friend) fun new_open_position_order<C, F>(
         timestamp: u64,
         open_amount: u64,
@@ -53,8 +71,17 @@ module abex_core::orders {
         position_config: PositionConfig,
         collateral: Balance<C>,
         fee: Balance<F>,
-    ): OpenPositionOrder<C, F> {
-        OpenPositionOrder {
+    ): (OpenPositionOrder<C, F>, CreateOpenPositionOrderEvent) {
+        let event = CreateOpenPositionOrderEvent {
+            open_amount,
+            reserve_amount,
+            limited_index_price: agg_price::price_of(&limited_index_price),
+            collateral_price_threshold,
+            position_config,
+            collateral_amount: balance::value(&collateral),
+            fee_amount: balance::value(&fee),
+        };
+        let order = OpenPositionOrder {
             executed: false,
             created_at: timestamp,
             open_amount,
@@ -64,7 +91,9 @@ module abex_core::orders {
             position_config,
             collateral,
             fee,
-        }
+        };
+
+        (order, event)
     }
 
     public(friend) fun new_decrease_position_order<F>(
@@ -74,8 +103,15 @@ module abex_core::orders {
         limited_index_price: AggPrice,
         collateral_price_threshold: Decimal,
         fee: Balance<F>,
-    ): DecreasePositionOrder<F> {
-        DecreasePositionOrder {
+    ): (DecreasePositionOrder<F>, CreateDecreasePositionOrderEvent) {
+        let event = CreateDecreasePositionOrderEvent {
+            take_profit,
+            decrease_amount,
+            limited_index_price: agg_price::price_of(&limited_index_price),
+            collateral_price_threshold,
+            fee_amount: balance::value(&fee),
+        };
+        let order = DecreasePositionOrder {
             executed: false,
             created_at: timestamp,
             take_profit,
@@ -83,7 +119,9 @@ module abex_core::orders {
             limited_index_price,
             collateral_price_threshold,
             fee,
-        }
+        };
+
+        (order, event)
     }
 
     public(friend) fun execute_open_position_order<C, F>(
