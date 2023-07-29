@@ -29,7 +29,6 @@ module abex_core::pool {
         price_config: AggPriceConfig,
 
         last_update: u64,
-        tax: Balance<C>,
         liquidity: Balance<C>,
         reserved_amount: u64,
         unrealised_reserving_fee_amount: Decimal,
@@ -208,7 +207,6 @@ module abex_core::pool {
             reserving_fee_model: model_id,
             price_config,
             last_update: 0,
-            tax: balance::zero(),
             liquidity: balance::zero(),
             reserved_amount: 0,
             unrealised_reserving_fee_amount: decimal::zero(),
