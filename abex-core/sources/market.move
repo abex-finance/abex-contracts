@@ -38,6 +38,9 @@ module abex_core::market {
     struct Market<phantom L> has key {
         id: UID,
 
+        // bit mask of versioned functions
+        fun_mask: u256,
+
         vaults_locked: bool,
         symbols_locked: bool,
 
@@ -79,7 +82,7 @@ module abex_core::market {
         position_id: Option<ID>,
     }
 
-    // === tag structs ===
+    // === Tag structs ===
 
     /// `LONG` is a tag struct to indicate the direction of a position is long.
     struct LONG has drop {}
@@ -193,23 +196,24 @@ module abex_core::market {
 
     // === Errors ===
     // common errors
-    const ERR_MARKET_ALREADY_LOCKED: u64 = 0;
-    // perpetual trading errors
-    const ERR_INVALID_DIRECTION: u64 = 1;
-    const ERR_CAN_NOT_CREATE_ORDER: u64 = 2;
-    const ERR_CAN_NOT_TRADE_IMMEDIATELY: u64 = 3;
-    // deposit, withdraw and swap errors
-    const ERR_VAULT_ALREADY_HANDLED: u64 = 4;
-    const ERR_SYMBOL_ALREADY_HANDLED: u64 = 5;
-    const ERR_VAULTS_NOT_TOTALLY_HANDLED: u64 = 6;
-    const ERR_SYMBOLS_NOT_TOTALLY_HANDLED: u64 = 7;
-    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 8;
-    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 9;
-    const ERR_SWAPPING_SAME_COINS: u64 = 10;
+    const ERR_FUNCTION_VERSION_EXPIRED: u64 = 1;
+    const ERR_MARKET_ALREADY_LOCKED: u64 = 2;
     // referral errors
-    const ERR_ALREADY_HAS_REFERRAL: u64 = 11;
+    const ERR_ALREADY_HAS_REFERRAL: u64 = 3;
+    // perpetual trading errors
+    const ERR_INVALID_DIRECTION: u64 = 4;
+    const ERR_CAN_NOT_CREATE_ORDER: u64 = 5;
+    const ERR_CAN_NOT_TRADE_IMMEDIATELY: u64 = 6;
+    // deposit, withdraw and swap errors
+    const ERR_VAULT_ALREADY_HANDLED: u64 = 7;
+    const ERR_SYMBOL_ALREADY_HANDLED: u64 = 8;
+    const ERR_VAULTS_NOT_TOTALLY_HANDLED: u64 = 9;
+    const ERR_SYMBOLS_NOT_TOTALLY_HANDLED: u64 = 10;
+    const ERR_UNEXPECTED_MARKET_VALUE: u64 = 11;
+    const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 12;
+    const ERR_SWAPPING_SAME_COINS: u64 = 13;
 
-    // === internal functions ===
+    // === Internal functions ===
 
     fun pay_from_balance<T>(
         balance: Balance<T>,
@@ -315,6 +319,7 @@ module abex_core::market {
 
         let market = Market {
             id: object::new(ctx),
+            fun_mask: 0x0,
             vaults_locked: false,
             symbols_locked: false,
             rebate_rate,
@@ -459,13 +464,15 @@ module abex_core::market {
         event::emit(CollateralRemoved<C, I, D> {});
     }
     
+    // version = 0x1
     public entry fun add_new_referral<L>(
         market: &mut Market<L>,
         referrer: address,
         ctx: &mut TxContext,
     ) {
-        let owner = tx_context::sender(ctx);
+        assert!(market.fun_mask & 0x1 == 0, ERR_FUNCTION_VERSION_EXPIRED);
 
+        let owner = tx_context::sender(ctx);
         assert!(
             !table::contains(&market.referrals, owner),
             ERR_ALREADY_HAS_REFERRAL,
@@ -475,6 +482,7 @@ module abex_core::market {
         table::add(&mut market.referrals, owner, referral);
     }
 
+    // version = 0x1 << 1
     public entry fun open_position<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -492,6 +500,7 @@ module abex_core::market {
         limited_index_price: u256,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x2 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -624,6 +633,7 @@ module abex_core::market {
         }
     }
 
+    // version = 0x1 << 2
     public entry fun decrease_position<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -640,6 +650,7 @@ module abex_core::market {
         limited_index_price: u256,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x4 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -767,6 +778,7 @@ module abex_core::market {
         }
     }
 
+    // version = 0x1 << 3
     public entry fun decrease_reserved_from_position<L, C, I, D>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -775,6 +787,7 @@ module abex_core::market {
         decrease_amount: u64,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x8 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
 
@@ -807,12 +820,15 @@ module abex_core::market {
         });
     }
 
+    // version = 0x1 << 4
     public entry fun pledge_in_position<L, C, I, D>(
         market: &mut Market<L>,
         position_cap: &PositionCap<C, I, D>,
         pledge: Coin<C>,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x10 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
         let owner = tx_context::sender(ctx);
 
         let position_name = PositionName<C, I, D> {
@@ -833,6 +849,7 @@ module abex_core::market {
         });
     }
 
+    // version = 0x1 << 5
     public entry fun redeem_from_position<L, C, I, D>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -844,6 +861,7 @@ module abex_core::market {
         redeem_amount: u64,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x20 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
         
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -903,6 +921,7 @@ module abex_core::market {
         });
     }
 
+    // version = 0x1 << 6
     public entry fun liquidate_position<L, C, I, D>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -914,6 +933,7 @@ module abex_core::market {
         position_id: address,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x40 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -973,11 +993,14 @@ module abex_core::market {
         });
     }
 
+    // version = 0x1 << 7
     public entry fun clear_closed_position<L, C, I, D>(
         market: &mut Market<L>,
         position_cap: PositionCap<C, I, D>,
         ctx: &TxContext,
     ) {
+        assert!(market.fun_mask & 0x80 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
         let PositionCap { id } = position_cap;
 
         let position_name = PositionName<C, I, D> {
@@ -994,6 +1017,7 @@ module abex_core::market {
         object::delete(id);
     }
 
+    // version = 0x1 << 8
     public entry fun execute_open_position_order<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -1005,6 +1029,7 @@ module abex_core::market {
         order_id: address,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x100 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -1103,6 +1128,7 @@ module abex_core::market {
         pay_from_balance(fee, executor, ctx);
     }
 
+    // version = 0x1 << 9
     public entry fun execute_decrease_position_order<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -1115,6 +1141,7 @@ module abex_core::market {
         position_id: address,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x200 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
         
         let timestamp = clock::timestamp_ms(clock) / 1000;
@@ -1210,11 +1237,14 @@ module abex_core::market {
         pay_from_balance(fee, executor, ctx);
     }
 
+    // version = 0x1 << 10
     public entry fun clear_open_position_order<L, C, I, D, F>(
         market: &mut Market<L>,
         order_cap: OrderCap<C, I, D, F>,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x400 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
         let owner = tx_context::sender(ctx);
 
         let OrderCap { id, position_id } = order_cap;
@@ -1236,11 +1266,14 @@ module abex_core::market {
         pay_from_balance(fee, owner, ctx);
     }
 
+    // version = 0x1 << 11
     public entry fun clear_decrease_position_order<L, C, I, D, F>(
         market: &mut Market<L>,
         order_cap: OrderCap<C, I, D, F>,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x800 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
         let owner = tx_context::sender(ctx);
 
         let OrderCap { id, position_id } = order_cap;
@@ -1261,8 +1294,9 @@ module abex_core::market {
         pay_from_balance(fee, owner, ctx);
     }
 
-    /// public write functions
+    /// === public write functions ===
 
+    // version = 0x1 << 12
     public fun deposit<L, C>(
         market: &mut Market<L>,
         model: &RebaseFeeModel,
@@ -1272,6 +1306,7 @@ module abex_core::market {
         symbols_valuation: SymbolsValuation,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x1000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(
             object::id(model) == market.rebase_fee_model,
             ERR_MISMATCHED_RESERVING_FEE_MODEL,
@@ -1319,6 +1354,7 @@ module abex_core::market {
         });
     }
 
+    // version = 0x1 << 13
     public fun withdraw<L, C>(
         market: &mut Market<L>,
         model: &RebaseFeeModel,
@@ -1328,6 +1364,7 @@ module abex_core::market {
         symbols_valuation: SymbolsValuation,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x2000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(
             object::id(model) == market.rebase_fee_model,
             ERR_MISMATCHED_RESERVING_FEE_MODEL,
@@ -1380,6 +1417,7 @@ module abex_core::market {
         });
     }
 
+    // version = 0x1 << 14
     public fun swap<L, S, D>(
         market: &mut Market<L>,
         model: &RebaseFeeModel,
@@ -1388,6 +1426,7 @@ module abex_core::market {
         vaults_valuation: VaultsValuation,
         ctx: &mut TxContext,
     ) {
+        assert!(market.fun_mask & 0x4000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(
             object::id(model) == market.rebase_fee_model,
             ERR_MISMATCHED_RESERVING_FEE_MODEL,
@@ -1442,10 +1481,12 @@ module abex_core::market {
         });
     }
 
+    // version = 0x1 << 15
     public fun create_vaults_valuation<L>(
         clock: &Clock,
         market: &mut Market<L>,
     ): VaultsValuation {
+        assert!(market.fun_mask & 0x8000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked, ERR_MARKET_ALREADY_LOCKED);
         // lock to avoid re-valuation
         market.vaults_locked = true;
@@ -1459,10 +1500,12 @@ module abex_core::market {
         }
     }
 
+    // version = 0x1 << 16
     public fun create_symbols_valuation<L>(
         clock: &Clock,
         market: &mut Market<L>,
     ): SymbolsValuation {
+        assert!(market.fun_mask & 0x10000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
         // lock to avoid re-valuation
         market.symbols_locked = true;
@@ -1476,12 +1519,15 @@ module abex_core::market {
         }
     }
 
+    // version = 0x1 << 17
     public fun valuate_vault<L, C>(
         market: &mut Market<L>,
         model: &ReservingFeeModel,
         feeder: &PythFeeder,
         vaults_valuation: &mut VaultsValuation,
     ) {
+        assert!(market.fun_mask & 0x20000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
         let timestamp = vaults_valuation.timestamp;
 
         let vault: &mut Vault<C> = bag::borrow_mut(&mut market.vaults, VaultName<C> {});
@@ -1511,12 +1557,15 @@ module abex_core::market {
         );
     }
 
+    // version = 0x1 << 18
     public fun valuate_symbol<L, I, D>(
         market: &mut Market<L>,
         funding_fee_model: &FundingFeeModel,
         feeder: &PythFeeder,
         valuation: &mut SymbolsValuation,
     ) {
+        assert!(market.fun_mask & 0x40000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
         let timestamp = valuation.timestamp;
         let long = parse_direction<D>();
 
@@ -1548,7 +1597,7 @@ module abex_core::market {
         vec_set::insert(&mut valuation.handled, symbol_name);
     }
 
-    // === public read functions
+    // === public read functions ===
 
     public fun rebase_fee_model<L>(market: &Market<L>): &ID {
         &market.rebase_fee_model
