@@ -47,6 +47,10 @@ module abex_core::sdecimal {
     }
 
     public fun add_with_decimal(a: SDecimal, b: Decimal): SDecimal {
+        if (is_zero(&a)) {
+            return from_decimal(true, b)
+        };
+
         let (is_positive, value) = if (a.is_positive) {
             (true, decimal::add(a.value, b))
         } else {
@@ -61,6 +65,10 @@ module abex_core::sdecimal {
     }
 
     public fun sub_with_decimal(a: SDecimal, b: Decimal): SDecimal {
+        if (is_zero(&a)) {
+            return from_decimal(false, b)
+        };
+
         let (is_positive, value) = if (a.is_positive) {
             if (decimal::gt(&a.value, &b)) {
                 (true, decimal::sub(a.value, b))
@@ -75,6 +83,13 @@ module abex_core::sdecimal {
     }
 
     public fun add(a: SDecimal, b: SDecimal): SDecimal {
+        if (is_zero(&a)) {
+            return b
+        };
+        if (is_zero(&b)) {
+            return a
+        };
+
         let (is_positive, value) = if (a.is_positive == b.is_positive) {
             (a.is_positive, decimal::add(a.value, b.value))
         } else {
@@ -84,21 +99,26 @@ module abex_core::sdecimal {
                 (b.is_positive, decimal::sub(b.value, a.value))
             }
         };
-
         SDecimal { is_positive, value }
     }
 
     public fun sub(a: SDecimal, b: SDecimal): SDecimal {
+        if (is_zero(&a)) {
+            return from_decimal(!b.is_positive, b.value)
+        };
+        if (is_zero(&b)) {
+            return a
+        };
+
         let (is_positive, value) = if (a.is_positive != b.is_positive) {
             (a.is_positive, decimal::add(a.value, b.value))
         } else {
             if (decimal::gt(&a.value, &b.value)) {
                 (a.is_positive, decimal::sub(a.value, b.value))
             } else {
-                (b.is_positive, decimal::sub(b.value, a.value))
+                (!a.is_positive, decimal::sub(b.value, a.value))
             }
         };
-
         SDecimal { is_positive, value }
     }
 
