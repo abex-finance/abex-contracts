@@ -319,7 +319,7 @@ module abex_core::pool {
         );
         let withdraw_value = decimal::mul_with_rate(market_value, exchange_rate);
         assert!(
-            decimal::lt(&withdraw_value, &total_vaults_value),
+            decimal::lt(&withdraw_value, &vault_value),
             ERR_INSUFFICIENT_SUPPLY,
         );
 
