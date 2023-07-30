@@ -6,7 +6,7 @@ published-at = "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d263
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "sui-v1.0.0"
+rev = "sui-v1.1.1"
 
 [dependencies.Wormhole]
 local = "../wormhole"

@@ -44,7 +44,6 @@ module abex_core::srate {
                 (true, rate::sub(b, a.value))
             }
         };
-
         SRate { is_positive, value }
     }
 
@@ -62,7 +61,6 @@ module abex_core::srate {
         } else {
             (false, rate::add(a.value, b))
         };
-
         SRate { is_positive, value }
     }
 

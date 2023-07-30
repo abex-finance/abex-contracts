@@ -1,12 +1,12 @@
 [package]
 name = "abex-core"
-version = "0.0.1"
-published-at = "0xa3327db1d97b439ca85dfee9b7019230ba2ee5c0add1829495b91e777d34934c"
+version = "1.0.0"
+published-at = "0xdfa870297aee02254573991d4d76cf3769a5e3e435fa3ff8efb91bdd9881b524"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "sui-v1.0.0"
+rev = "sui-v1.1.1"
 
 [dependencies.Pyth]
 local = "../vendor/pyth"

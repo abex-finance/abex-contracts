@@ -60,7 +60,6 @@ module abex_core::sdecimal {
                 (true, decimal::sub(b, a.value))
             }
         };
-
         SDecimal { is_positive, value }
     }
 
@@ -78,7 +77,6 @@ module abex_core::sdecimal {
         } else {
             (false, decimal::add(a.value, b))
         };
-
         SDecimal { is_positive, value }
     }
 
