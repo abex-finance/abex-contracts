@@ -31,6 +31,10 @@ module abex_core::srate {
     }
 
     public fun add_with_rate(a: SRate, b: Rate): SRate {
+        if (is_zero(&a)) {
+            return from_rate(true, b)
+        };
+
         let (is_positive, value) = if (a.is_positive) {
             (true, rate::add(a.value, b))
         } else {
@@ -45,6 +49,10 @@ module abex_core::srate {
     }
 
     public fun sub_with_rate(a: SRate, b: Rate): SRate {
+        if (is_zero(&a)) {
+            return from_rate(false, b)
+        };
+
         let (is_positive, value) = if (a.is_positive) {
             if (rate::gt(&a.value, &b)) {
                 (true, rate::sub(a.value, b))
@@ -59,6 +67,13 @@ module abex_core::srate {
     }
 
     public fun add(a: SRate, b: SRate): SRate {
+        if (is_zero(&a)) {
+            return b
+        };
+        if (is_zero(&b)) {
+            return a
+        };
+
         let (is_positive, value) = if (a.is_positive == b.is_positive) {
             (a.is_positive, rate::add(a.value, b.value))
         } else {
@@ -68,21 +83,26 @@ module abex_core::srate {
                 (b.is_positive, rate::sub(b.value, a.value))
             }
         };
-
         SRate { is_positive, value }
     }
 
     public fun sub(a: SRate, b: SRate): SRate {
+        if (is_zero(&a)) {
+            return from_rate(!b.is_positive, b.value)
+        };
+        if (is_zero(&b)) {
+            return a
+        };
+        
         let (is_positive, value) = if (a.is_positive != b.is_positive) {
             (a.is_positive, rate::add(a.value, b.value))
         } else {
             if (rate::gt(&a.value, &b.value)) {
                 (a.is_positive, rate::sub(a.value, b.value))
             } else {
-                (b.is_positive, rate::sub(b.value, a.value))
+                (!a.is_positive, rate::sub(b.value, a.value))
             }
         };
-
         SRate { is_positive, value }
     }
 
