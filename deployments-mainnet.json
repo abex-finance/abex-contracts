@@ -88,6 +88,10 @@
       "usdt": {
         "id": "0x64f8db86bef3603472cf446c7ab40278af7f4bcda97c7599ad4cb33d228e31eb",
         "version": "2457985"
+      },
+      "usdc": {
+        "id": "0x1db46472aa29f5a41dd4dc41867fdcbc1594f761e607293c40bdb66d7cd5278f",
+        "version": "2457985"
       }
     }
   },
@@ -106,9 +110,15 @@
     },
     "usdt": {
       "decimals": 6,
-      "module": "0xd6fe68237a739742ee719054d16ab765a939e5394fb69ce1fcee7ada7c79a89b::usdt::USDT",
-      "metadata": "0xdadadff864538f688c7459f91b9e7cf0d7a4a0f91aabc773d8254240289f2d3a",
-      "treasury": "0xeb6f34acfa562c7437cbb65edf6291f46d074223fa1fabe4f0bc4f1f3ec17223"
+      "module": "0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN",
+      "metadata": "0xfb0e3eb97dd158a5ae979dddfa24348063843c5b20eb8381dd5fa7c93699e45c",
+      "treasury": null
+    },
+    "usdc": {
+      "decimals": 6,
+      "module": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+      "metadata": "0x4fbf84f3029bd0c0b77164b587963be957f853eccf834a67bb9ecba6ec80f189",
+      "treasury": null
     }
   }
 }
