@@ -72,9 +72,10 @@ module abex_core::pool {
         collateral_price: Decimal,
         index_price: Decimal,
         open_amount: u64,
-        open_fee_value: Decimal,
+        open_fee_amount: u64,
         reserve_amount: u64,
         collateral_amount: u64,
+        rebate_amount: u64,
     }
 
     struct OpenPositionFailedEvent has copy, drop {
@@ -93,9 +94,11 @@ module abex_core::pool {
         decrease_fee_value: Decimal,
         reserving_fee_value: Decimal,
         funding_fee_value: SDecimal,
+        delta_realised_pnl: SDecimal,
         closed: bool,
         has_profit: bool,
         settled_amount: u64,
+        rebate_amount: u64,
     }
 
     struct DecreasePositionFailedEvent has copy, drop {
@@ -125,6 +128,7 @@ module abex_core::pool {
         index_price: Decimal,
         reserving_fee_value: Decimal,
         funding_fee_value: SDecimal,
+        delta_realised_pnl: SDecimal,
         loss_amount: u64,
         liquidator_bonus_amount: u64,
     }
@@ -508,18 +512,18 @@ module abex_core::pool {
             return (code, option::none(), option::some(event))
         };
 
-        let (position, open_fee, open_fee_value, open_fee_amount) =
+        let (position, open_fee, open_fee_amount_dec) =
             position::unwrap_open_position_result(option::destroy_some(result));
+        let open_fee_amount = balance::value(&open_fee);
 
         // compute rebate
-        let rebate = balance::split(
-            &mut open_fee,
-            decimal::floor_u64(decimal::mul_with_rate(open_fee_amount, rebate_rate)),
-        );
+        let rebate_amount = decimal::floor_u64(decimal::mul_with_rate(open_fee_amount_dec, rebate_rate));
 
         // update vault
         vault.reserved_amount = vault.reserved_amount + reserve_amount;
-        let _ = balance::join(&mut vault.liquidity, open_fee);
+        let liquidity_amount = balance::join(&mut vault.liquidity, open_fee);
+        assert!(liquidity_amount > rebate_amount, ERR_INSUFFICIENT_LIQUIDITY);
+        let rebate = balance::split(&mut vault.liquidity, rebate_amount);
 
         // update symbol
         symbol.opening_size = decimal::add(
@@ -537,9 +541,10 @@ module abex_core::pool {
                 collateral_price: agg_price::price_of(collateral_price),
                 index_price: agg_price::price_of(index_price),
                 open_amount,
-                open_fee_value,
+                open_fee_amount,
                 reserve_amount,
                 collateral_amount,
+                rebate_amount,
             },
         };
         (code, option::some(result), option::none())
@@ -639,9 +644,8 @@ module abex_core::pool {
 
         // compute rebate
         let rebate_value = decimal::mul_with_rate(decrease_fee_value, rebate_rate);
-        let rebate = balance::split(
-            &mut to_vault,
-            decimal::floor_u64(agg_price::value_to_coins(collateral_price, rebate_value)),
+        let rebate_amount = decimal::floor_u64(
+            agg_price::value_to_coins(collateral_price, rebate_value)
         );
 
         // update vault
@@ -650,7 +654,9 @@ module abex_core::pool {
             vault.unrealised_reserving_fee_amount,
             reserving_fee_amount,
         );
-        let _ = balance::join(&mut vault.liquidity, to_vault);
+        let liquidity_amount = balance::join(&mut vault.liquidity, to_vault);
+        assert!(liquidity_amount > rebate_amount, ERR_INSUFFICIENT_LIQUIDITY);
+        let rebate = balance::split(&mut vault.liquidity, rebate_amount);
 
         // update symbol
         symbol.opening_size = decimal::sub(symbol.opening_size, decrease_size);
@@ -659,20 +665,18 @@ module abex_core::pool {
             symbol.unrealised_funding_fee_value,
             funding_fee_value,
         );
-        symbol.realised_pnl = sdecimal::add(
-            symbol.realised_pnl,
-            sdecimal::sub_with_decimal(
-                sdecimal::from_decimal(
-                    !has_profit,
-                    agg_price::coins_to_value(collateral_price, settled_amount),
-                ),
-                // exclude: decrease fee - rebate + reserving fee
-                decimal::add(
-                    decimal::sub(decrease_fee_value, rebate_value),
-                    reserving_fee_value,
-                ),
+        let delta_realised_pnl = sdecimal::sub_with_decimal(
+            sdecimal::from_decimal(
+                !has_profit,
+                agg_price::coins_to_value(collateral_price, settled_amount),
+            ),
+            // exclude: decrease fee - rebate + reserving fee
+            decimal::add(
+                decimal::sub(decrease_fee_value, rebate_value),
+                reserving_fee_value,
             ),
         );
+        symbol.realised_pnl = sdecimal::add(symbol.realised_pnl, delta_realised_pnl);
 
         let result = DecreasePositionResult {
             to_trader,
@@ -684,9 +688,11 @@ module abex_core::pool {
                 decrease_fee_value,
                 reserving_fee_value,
                 funding_fee_value,
+                delta_realised_pnl,
                 closed,
                 has_profit,
                 settled_amount,
+                rebate_amount,
             },
         };
         (code, option::some(result), option::none())
@@ -875,20 +881,18 @@ module abex_core::pool {
             symbol.unrealised_funding_fee_value,
             funding_fee_value,
         );
-        symbol.realised_pnl = sdecimal::add(
-            symbol.realised_pnl,
-            sdecimal::sub_with_decimal(
-                sdecimal::from_decimal(
-                    true,
-                    agg_price::coins_to_value(
-                        collateral_price,
-                        trader_loss_amount,
-                    ),
+        let delta_realised_pnl = sdecimal::sub_with_decimal(
+            sdecimal::from_decimal(
+                true,
+                agg_price::coins_to_value(
+                    collateral_price,
+                    trader_loss_amount,
                 ),
-                // exclude reserving fee
-                reserving_fee_value,
-            )
+            ),
+            // exclude reserving fee
+            reserving_fee_value,
         );
+        symbol.realised_pnl = sdecimal::add(symbol.realised_pnl, delta_realised_pnl);
 
         let event = LiquidatePositionEvent {
             liquidator,
@@ -896,6 +900,7 @@ module abex_core::pool {
             index_price: agg_price::price_of(index_price),
             reserving_fee_value,
             funding_fee_value,
+            delta_realised_pnl,
             loss_amount: trader_loss_amount,
             liquidator_bonus_amount,
         };

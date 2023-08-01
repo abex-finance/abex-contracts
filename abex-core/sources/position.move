@@ -70,8 +70,7 @@ module abex_core::position {
     struct OpenPositionResult<phantom C> {
         position: Position<C>,
         open_fee: Balance<C>,
-        open_fee_value: Decimal,
-        open_fee_amount_dec: Decimal,
+        open_fee_amount: Decimal,
     }
 
     struct DecreasePositionResult<phantom C> {
@@ -191,26 +190,15 @@ module abex_core::position {
         let result = OpenPositionResult {
             position,
             open_fee,
-            open_fee_value,
-            open_fee_amount_dec,
+            open_fee_amount: open_fee_amount_dec,
         }; 
         (OK, option::some(result))
     }
 
-    public(friend) fun unwrap_open_position_result<C>(res: OpenPositionResult<C>): (
-        Position<C>,
-        Balance<C>,
-        Decimal,
-        Decimal,
-    ) {
-        let OpenPositionResult {
-            position,
-            open_fee,
-            open_fee_value,
-            open_fee_amount_dec,
-        } = res;
+    public(friend) fun unwrap_open_position_result<C>(res: OpenPositionResult<C>): (Position<C>, Balance<C>, Decimal) {
+        let OpenPositionResult { position, open_fee, open_fee_amount } = res;
 
-        (position, open_fee, open_fee_value, open_fee_amount_dec)
+        (position, open_fee, open_fee_amount)
     }
 
     // This is a special function which will be executed by either owner or executor.
