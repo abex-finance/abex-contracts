@@ -535,17 +535,14 @@ module abex_core::position {
         let reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
         let reserving_fee_value = agg_price::coins_to_value(
             collateral_price,
-            decimal::ceil_u64(position.reserving_fee_amount),
+            decimal::ceil_u64(reserving_fee_amount),
         );
         let funding_fee_value = compute_funding_fee_value(position, funding_rate);
 
         // impact fee on delta size
         delta_size = sdecimal::sub(
             delta_size,
-            sdecimal::add_with_decimal(
-                position.funding_fee_value,
-                reserving_fee_value,  
-            ),
+            sdecimal::add_with_decimal(funding_fee_value, reserving_fee_value),
         );
 
         // liquidation check
