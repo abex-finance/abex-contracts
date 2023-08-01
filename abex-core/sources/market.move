@@ -31,6 +31,7 @@ module abex_core::market {
     use abex_core::pool::{Self, Vault, Symbol};
 
     friend abex_core::alp;
+    friend abex_core::market_tests;
 
     // === Objects ===
 
@@ -227,7 +228,7 @@ module abex_core::market {
         }
     }
 
-    fun get_referral_data(
+    public(friend) fun get_referral_data(
         referrals: &Table<address, Referral>,
         owner: address
     ): (Rate, address) {

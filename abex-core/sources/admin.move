@@ -4,6 +4,7 @@ module abex_core::admin {
     use sui::tx_context::{Self, TxContext};
 
     friend abex_core::alp;
+    friend abex_core::market_tests;
 
     struct AdminCap has key {
         id: UID,
