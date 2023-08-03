@@ -76,7 +76,11 @@ module abex_core::decimal {
         dec.value == 0
     }
 
-    public fun equals(self: &Decimal, other: &Decimal): bool {
+    public fun is_one(dec: &Decimal): bool {
+        dec.value == WAD
+    }
+
+    public fun eq(self: &Decimal, other: &Decimal): bool {
         self.value == other.value
     }
 

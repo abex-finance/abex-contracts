@@ -15,6 +15,18 @@ module abex_core::srate {
         self.is_positive
     }
 
+    public fun eq(self: &SRate, other: &SRate): bool {
+        if (rate::eq(&self.value, &other.value)) {
+            if (is_zero(self)) {
+                true
+            } else {
+                self.is_positive == other.is_positive
+            }
+        } else {
+            false
+        }
+    }
+
     public fun value(self: &SRate): Rate {
         self.value
     }

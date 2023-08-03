@@ -17,6 +17,18 @@ module abex_core::sdecimal {
         self.is_positive
     }
 
+    public fun eq(self: &SDecimal, other: &SDecimal): bool {
+        if (decimal::eq(&self.value, &other.value)) {
+            if (is_zero(self)) {
+                true
+            } else {
+                self.is_positive == other.is_positive
+            }
+        } else {
+            false
+        }
+    }
+
     public fun value(self: &SDecimal): Decimal {
         self.value
     }
@@ -190,3 +202,142 @@ module abex_core::sdecimal {
         }
     }
 }
+
+#[test_only]
+module abex_core::sdecimal_tests {
+    use abex_core::decimal;
+    use abex_core::sdecimal::{
+        from_decimal, add, add_with_decimal, sub, sub_with_decimal, eq,
+    };
+
+    #[test]
+    fun test_add() {
+        // a1 = +0
+        let a1 = from_decimal(true, decimal::zero());
+        // a2 = -0
+        let a2 = from_decimal(false, decimal::zero());
+        // b = 1
+        let b = from_decimal(true, decimal::one());
+        // c = -1
+        let c = from_decimal(false, decimal::one());
+        // d = 2
+        let d = from_decimal(true, decimal::from_u64(2));
+        // e = -2
+        let e = from_decimal(false, decimal::from_u64(2));
+
+        // a1 + a2 = a2 + a1 = a1 = a2
+        assert!(eq(&add(a1, a2), &a1), 0);
+        assert!(eq(&add(a2, a1), &a2), 1);
+        // a1 + b = a2 + b = b
+        assert!(eq(&add(a1, b), &b), 2);
+        assert!(eq(&add(a2, b), &b), 3);
+        // a1 + c = a2 + c = c
+        assert!(eq(&add(a1, c), &c), 4);
+        assert!(eq(&add(a2, c), &c), 5);
+        // b + b = d
+        assert!(eq(&add(b, b), &d), 6);
+        // b + c = c + b = 0
+        assert!(eq(&add(b, c), &a1), 7);
+        assert!(eq(&add(c, b), &a1), 8);
+        // b + e = e + b = c
+        assert!(eq(&add(b, e), &c), 9);
+        assert!(eq(&add(e, b), &c), 10);
+        // c + c = e
+        assert!(eq(&add(c, c), &e), 11);
+        // c + d = d + c = b
+        assert!(eq(&add(c, d), &b), 12);
+        assert!(eq(&add(d, c), &b), 13);
+    }
+
+    #[test]
+    fun test_sub() {
+        // a1 = +0
+        let a1 = from_decimal(true, decimal::zero());
+        // a2 = -0
+        let a2 = from_decimal(false, decimal::zero());
+        // b = 1
+        let b = from_decimal(true, decimal::one());
+        // c = -1
+        let c = from_decimal(false, decimal::one());
+        // d = 2
+        let d = from_decimal(true, decimal::from_u64(2));
+        // e = -2
+        let e = from_decimal(false, decimal::from_u64(2));
+
+        // a1 - a2 = a2 - a1 = a1 = a2
+        assert!(eq(&sub(a1, a2), &a1), 0);
+        assert!(eq(&sub(a2, a1), &a2), 1);
+        // a1 - b = a2 - b = c
+        assert!(eq(&sub(a1, b), &c), 2);
+        assert!(eq(&sub(a2, b), &c), 3);
+        // a1 - c = a2 - c = b
+        assert!(eq(&sub(a1, c), &b), 4);
+        assert!(eq(&sub(a2, c), &b), 5);
+        // b - b = a1
+        assert!(eq(&sub(b, b), &a1), 6);
+        // b - c = d
+        assert!(eq(&sub(b, c), &d), 7);
+        // b - d = c
+        assert!(eq(&sub(b, d), &c), 8);
+        // c - c = a1
+        assert!(eq(&sub(c, c), &a1), 9);
+        // d - b = b
+        assert!(eq(&sub(d, b), &b), 10);
+        // a1 - e = a2 - e = d
+        assert!(eq(&sub(a1, e), &d), 11);
+        assert!(eq(&sub(a2, e), &d), 12);
+        // e - c = c
+        assert!(eq(&sub(e, c), &c), 13);
+    }
+
+    #[test]
+    fun test_add_with_decimal() {
+        // a1 = +0
+        let a1 = from_decimal(true, decimal::zero());
+        // a2 = -0
+        let a2 = from_decimal(false, decimal::zero());
+        // b = +1
+        let b = from_decimal(true, decimal::one());
+        // c = -1
+        let c = from_decimal(false, decimal::one());
+        // d = +2
+        let d = from_decimal(true, decimal::from_u64(2));
+        // e = -2
+        let e = from_decimal(false, decimal::from_u64(2));
+        // f = 2
+        let f = decimal::from_u64(2);
+
+        // a1 + e = a2 + e = d
+        assert!(eq(&add_with_decimal(a1, f), &d), 0);
+        assert!(eq(&add_with_decimal(a2, f), &d), 1);
+        // c + e = b
+        assert!(eq(&add_with_decimal(c, f), &b), 2);
+        // e + f = a1
+        assert!(eq(&add_with_decimal(e, f), &a1), 3);
+    }
+
+    #[test]
+    fun test_sub_with_decimal() {
+        // a1 = +0
+        let a1 = from_decimal(true, decimal::zero());
+        // a2 = -0
+        let a2 = from_decimal(false, decimal::zero());
+        // b = +1
+        let b = from_decimal(true, decimal::one());
+        // c = -1
+        let c = from_decimal(false, decimal::one());
+        // d = 1
+        let d = decimal::one();
+        // e = 2
+        let e = decimal::from_u64(2);
+
+        // a1 - d = a2 - d = c
+        assert!(eq(&sub_with_decimal(a1, d), &c), 0);
+        assert!(eq(&sub_with_decimal(a2, d), &c), 1);
+        // b - d = a1
+        assert!(eq(&sub_with_decimal(b, d), &a1), 2);
+        // b - e = c
+        assert!(eq(&sub_with_decimal(b, e), &c), 3);
+    }
+}
+
