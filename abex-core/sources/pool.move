@@ -323,7 +323,7 @@ module abex_core::pool {
         );
         let withdraw_value = decimal::mul_with_rate(market_value, exchange_rate);
         assert!(
-            decimal::lt(&withdraw_value, &vault_value),
+            decimal::le(&withdraw_value, &vault_value),
             ERR_INSUFFICIENT_SUPPLY,
         );
 
@@ -345,7 +345,7 @@ module abex_core::pool {
             agg_price::value_to_coins(price, withdraw_value)
         );
         assert!(
-            withdraw_amount < balance::value(&vault.liquidity),
+            withdraw_amount <= balance::value(&vault.liquidity),
             ERR_INSUFFICIENT_LIQUIDITY,
         );
         
@@ -1161,17 +1161,18 @@ module abex_core::pool {
         vault_weight: Decimal,
         total_vaults_weight: Decimal,
     ): Rate {
-        let ratio = if (decimal::is_zero(&total_vaults_value)) {
+        if (decimal::eq(&vault_value, &total_vaults_value)) {
+            // first deposit or withdraw all should be zero fee
             rate::zero()
         } else {
-            decimal::to_rate(
+            let ratio = decimal::to_rate(
                 decimal::div(vault_value, total_vaults_value)
-            )
-        };
-        let target_ratio = decimal::to_rate(
-            decimal::div(vault_weight, total_vaults_weight)
-        );
+            );
+            let target_ratio = decimal::to_rate(
+                decimal::div(vault_weight, total_vaults_weight)
+            );
 
-        model::compute_rebase_fee_rate(model, increase, ratio, target_ratio)
+            model::compute_rebase_fee_rate(model, increase, ratio, target_ratio)
+        }
     }
 }

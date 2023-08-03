@@ -104,4 +104,9 @@ module abex_core::agg_price {
             self.price,
         )
     }
+
+    #[test_only]
+    public fun test_agg_price(price: Decimal, precision: u64): AggPrice {
+        AggPrice { price, precision }
+    }
 }
