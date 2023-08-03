@@ -65,34 +65,16 @@
   },
   "pyth_feeder": {
     "package": "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302",
-    "state": {
-      "id": "0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f",
-      "version": "1715793"
-    },
+    "state": "0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f",
     "wormhole": {
       "package": "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a",
-      "state": {
-        "id": "0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c",
-        "version": "64"
-      }
+      "state": "0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c"
     },
     "feeder": {
-      "sui": {
-        "id": "0x168aa44fa92b27358beb17643834078b1320be6adf1b3bb0c7f018ac3591db1a",
-        "version": "2458010"
-      },
-      "btc": {
-        "id": "0x144ec4135c65af207b97b3d2dfea9972efc7d80cc13a960ae1d808a3307d90ca",
-        "version": "2457979"
-      },
-      "usdt": {
-        "id": "0x64f8db86bef3603472cf446c7ab40278af7f4bcda97c7599ad4cb33d228e31eb",
-        "version": "2457985"
-      },
-      "usdc": {
-        "id": "0x1db46472aa29f5a41dd4dc41867fdcbc1594f761e607293c40bdb66d7cd5278f",
-        "version": "2457985"
-      }
+      "sui": "0x168aa44fa92b27358beb17643834078b1320be6adf1b3bb0c7f018ac3591db1a",
+      "btc": "0x144ec4135c65af207b97b3d2dfea9972efc7d80cc13a960ae1d808a3307d90ca",
+      "usdt": "0x64f8db86bef3603472cf446c7ab40278af7f4bcda97c7599ad4cb33d228e31eb",
+      "usdc": "0x1db46472aa29f5a41dd4dc41867fdcbc1594f761e607293c40bdb66d7cd5278f"
     }
   },
   "coins": {
