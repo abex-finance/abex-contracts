@@ -69,10 +69,10 @@ fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
-market=`cat $deployments | jq -r ".abex_core.market.id"`
+market=`cat $deployments | jq -r ".abex_core.market"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
 coin_metadata=`cat $deployments | jq -r ".coins.$coin.metadata"`
-pyth_feeder=`cat $deployments | jq -r ".pyth_feeder.feeder.$coin.id"`
+pyth_feeder=`cat $deployments | jq -r ".pyth_feeder.feeder.$coin"`
 
 # add new symbol
 add_log=`sui client --client.config $config \

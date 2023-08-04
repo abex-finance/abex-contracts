@@ -12,6 +12,8 @@ module abex_core::position {
 
     friend abex_core::pool;
     friend abex_core::market;
+    #[test_only]
+    friend abex_core::position_tests;
 
     const OK: u64 = 0;
 
@@ -70,8 +72,7 @@ module abex_core::position {
     struct OpenPositionResult<phantom C> {
         position: Position<C>,
         open_fee: Balance<C>,
-        open_fee_value: Decimal,
-        open_fee_amount_dec: Decimal,
+        open_fee_amount: Decimal,
     }
 
     struct DecreasePositionResult<phantom C> {
@@ -191,26 +192,15 @@ module abex_core::position {
         let result = OpenPositionResult {
             position,
             open_fee,
-            open_fee_value,
-            open_fee_amount_dec,
+            open_fee_amount: open_fee_amount_dec,
         }; 
         (OK, option::some(result))
     }
 
-    public(friend) fun unwrap_open_position_result<C>(res: OpenPositionResult<C>): (
-        Position<C>,
-        Balance<C>,
-        Decimal,
-        Decimal,
-    ) {
-        let OpenPositionResult {
-            position,
-            open_fee,
-            open_fee_value,
-            open_fee_amount_dec,
-        } = res;
+    public(friend) fun unwrap_open_position_result<C>(res: OpenPositionResult<C>): (Position<C>, Balance<C>, Decimal) {
+        let OpenPositionResult { position, open_fee, open_fee_amount } = res;
 
-        (position, open_fee, open_fee_value, open_fee_amount_dec)
+        (position, open_fee, open_fee_amount)
     }
 
     // This is a special function which will be executed by either owner or executor.
@@ -447,9 +437,12 @@ module abex_core::position {
             ERR_INSUFFICIENT_RESERVED,
         );
 
-        // compute and update fee
-        position.reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
-        position.last_reserving_rate = reserving_rate;        
+        // compute fee
+        let reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
+
+        // update position
+        position.reserving_fee_amount = reserving_fee_amount;
+        position.last_reserving_rate = reserving_rate;
 
         balance::split(&mut position.reserved, decrease_amount)
     }
@@ -488,10 +481,24 @@ module abex_core::position {
         let ok = check_holding_duration(position, &delta_size, timestamp);
         assert!(ok, ERR_HOLDING_DURATION_TOO_SHORT);
 
-        // compute and update fee
-        position.reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
+        // compute fee
+        let reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
+        let reserving_fee_value = agg_price::coins_to_value(
+            collateral_price,
+            decimal::ceil_u64(reserving_fee_amount),
+        );
+        let funding_fee_value = compute_funding_fee_value(position, funding_rate);
+
+        // impact fee on delta size
+        delta_size = sdecimal::sub(
+            delta_size,
+            sdecimal::add_with_decimal(funding_fee_value, reserving_fee_value),
+        );
+
+        // update position
+        position.reserving_fee_amount = reserving_fee_amount;
+        position.funding_fee_value = funding_fee_value;
         position.last_reserving_rate = reserving_rate;
-        position.funding_fee_value = compute_funding_fee_value(position, funding_rate);
         position.last_funding_rate = funding_rate;
 
         // redeem
@@ -547,17 +554,14 @@ module abex_core::position {
         let reserving_fee_amount = compute_reserving_fee_amount(position, reserving_rate);
         let reserving_fee_value = agg_price::coins_to_value(
             collateral_price,
-            decimal::ceil_u64(position.reserving_fee_amount),
+            decimal::ceil_u64(reserving_fee_amount),
         );
         let funding_fee_value = compute_funding_fee_value(position, funding_rate);
 
         // impact fee on delta size
         delta_size = sdecimal::sub(
             delta_size,
-            sdecimal::add_with_decimal(
-                position.funding_fee_value,
-                reserving_fee_value,  
-            ),
+            sdecimal::add_with_decimal(funding_fee_value, reserving_fee_value),
         );
 
         // liquidation check
@@ -793,7 +797,7 @@ module abex_core::position {
     }
 
     #[test_only]
-    fun test_position_config(): PositionConfig {
+    public(friend) fun test_position_config(): PositionConfig {
         PositionConfig {
             max_leverage: 100,
             min_holding_duration: 30, // 30 seconds
@@ -806,32 +810,74 @@ module abex_core::position {
         }
     }
 
-    // fun test_position<C>(): Position<C> {
-    //     Position {
-    //         closed: false,
-    //         config: test_position_config(),
-    //         open_timestamp: 0,
-    //         position_amount: 1_000_000_000,
-    //         position_size: decimal::from_u64(1_000), // 1000 USD
-    //         reserving_fee_amount: decimal::zero(),
-    //         funding_fee_value: sdecimal::zero(),
-            
-    //     }
-    // }
+    #[test_only]
+    public(friend) fun test_fresh_position<C>(): Position<C> {
+        Position {
+            closed: false,
+            config: test_position_config(),
+            open_timestamp: 0,
+            position_amount: 1_000_000_000, // 1 Coin
+            position_size: decimal::from_u64(1_000), // 1000 USD
+            reserving_fee_amount: decimal::zero(),
+            funding_fee_value: sdecimal::zero(),
+            last_reserving_rate: rate::from_percent(1), // 1%
+            last_funding_rate: srate::from_rate(false, rate::from_percent(1)), // -1%
+            reserved: balance::create_for_testing(100_000_000_000), // 100 Coin
+            collateral: balance::create_for_testing(10_000_000_000), // 10 Coin
+        }
+    }
+}
 
-    // fun test_compute_reserving_fee_amount() {
+#[test_only]
+module abex_core::position_tests {
+    use sui::test_utils;
+
+    use abex_core::rate;
+    use abex_core::srate;
+    use abex_core::decimal;
+    use abex_core::sdecimal;
+    use abex_core::position;
+    
+    struct T has drop {}
+
+    #[test]
+    fun test_compute_reserving_fee_amount() {
+        let position = position::test_fresh_position<T>();
         
-    // }
+        // fee rate: 1% -> 2%
+        let reserving_rate = rate::from_percent(2);
+        // fee = 0 + (2% - 1%) * 100 = 1
+        let fee = position::compute_reserving_fee_amount(
+            &position,
+            reserving_rate,
+        );
+        assert!(decimal::eq(&fee, &decimal::from_u64(1_000_000_000)), 0);
 
-    // #[test]
-    // fun test_update_dynamic_fee() {
-    //     let position = Position {
-    //         config: default_position_config(),
-    //         last_update: 0,
-    //         position_amount: 1_000_000,
-    //         position_size: decimal::zero(), // not used here
+        test_utils::destroy(position);
+    }
 
+    #[test]
+    fun test_compute_funding_fee_value() {
+        let position = position::test_fresh_position<T>();
 
-    //     }
-    // }
+        // acc fee rate: -1% -> 2%
+        let funding_rate = srate::from_rate(true, rate::from_percent(2));
+        // fee = 0 + (2% - (-1%)) * 1000 = 30 USD
+        let fee = position::compute_funding_fee_value(
+            &position,
+            funding_rate,
+        );
+        assert!(sdecimal::eq(&fee, &sdecimal::from_decimal(true, decimal::from_u64(30))), 0);
+        
+        // acc fee rate: -1% -> -2%
+        let funding_rate = srate::from_rate(false, rate::from_percent(2));
+        // fee = 0 + (-2% - (-1%)) * 1000 = -10 USD
+        let fee = position::compute_funding_fee_value(
+            &position,
+            funding_rate,
+        );
+        assert!(sdecimal::eq(&fee, &sdecimal::from_decimal(false, decimal::from_u64(10))), 1);
+
+        test_utils::destroy(position);
+    }
 }

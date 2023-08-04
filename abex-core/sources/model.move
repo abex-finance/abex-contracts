@@ -88,8 +88,8 @@ module abex_core::model {
         ratio: Rate,
         target_ratio: Rate,
     ): Rate {
-        if ((increase && rate::lt(&ratio, &target_ratio))
-            || (!increase && rate::gt(&ratio, &target_ratio))) {
+        if ((increase && rate::le(&ratio, &target_ratio))
+            || (!increase && rate::ge(&ratio, &target_ratio))) {
             model.base
         } else {
             let delta_rate = decimal::mul_with_rate(

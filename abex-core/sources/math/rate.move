@@ -60,7 +60,7 @@ module abex_core::rate {
         (((HALF_WAD + rate.value) / WAD) as u64)
     }
 
-    public fun equals(self: &Rate, other: &Rate): bool {
+    public fun eq(self: &Rate, other: &Rate): bool {
         self.value == other.value
     }
 
@@ -82,6 +82,10 @@ module abex_core::rate {
 
     public fun is_zero(self: &Rate): bool {
         self.value == 0
+    }
+
+    public fun is_one(self: &Rate): bool {
+        self.value == WAD
     }
 
     public fun diff(a: Rate, b: Rate): Rate {
