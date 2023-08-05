@@ -92,7 +92,7 @@ add_log=`sui client --client.config $config \
                      ${max_leverage} \
                      ${min_duration} \
                      ${max_reserved} \
-                     ${min_size} \
+                     ${min_collateral_value} \
                      ${open_fee_bps} \
                      ${decrease_fee_bps} \
                      ${liq_threshold} \
