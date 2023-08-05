@@ -1,7 +1,7 @@
 [package]
 name = "abex-ltc"
 version = "0.0.1"
-published-at = "0xabc"
+published-at = "0xcb9d2191108ddc53c6677bbf4c5fcf68eeb76110735cbecb3784864829f1de29"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
@@ -9,6 +9,6 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "sui-v1.1.1"
 
 [addresses]
-abex_ltc = "0xabc"
+abex_ltc = "0xcb9d2191108ddc53c6677bbf4c5fcf68eeb76110735cbecb3784864829f1de29"
 std = "0x1"
 sui = "0x2"

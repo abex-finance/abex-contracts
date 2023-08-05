@@ -1,7 +1,7 @@
 [package]
 name = "abex-doge"
 version = "0.0.1"
-published-at = "0xabc"
+published-at = "0x577c6b476f7fee9c3d1947ebc24aa4b8ee4ce196f299fec6cee46d5a3052cbaf"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
@@ -9,6 +9,6 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "sui-v1.1.1"
 
 [addresses]
-abex_doge = "0xabc"
+abex_doge = "0x577c6b476f7fee9c3d1947ebc24aa4b8ee4ce196f299fec6cee46d5a3052cbaf"
 std = "0x1"
 sui = "0x2"
