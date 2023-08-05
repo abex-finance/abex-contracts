@@ -34,51 +34,34 @@ module abex_core::model {
     const SECONDS_PER_EIGHT_HOUR: u64 = 28800;
 
     public(friend) fun create_rebase_fee_model(
-        base: u128,
-        multiplier: u256,
+        base: Rate,
+        multiplier: Decimal,
         ctx: &mut TxContext,
     ): ID {
         let id = object::new(ctx);
         let model_id = object::uid_to_inner(&id);
-        transfer::share_object(
-            RebaseFeeModel {
-                id,
-                base: rate::from_raw(base),
-                multiplier: decimal::from_raw(multiplier),
-            }
-        );
+        transfer::share_object(RebaseFeeModel { id, base, multiplier });
         model_id
     }
 
     public(friend) fun create_reserving_fee_model(
-        multiplier: u256,
+        multiplier: Decimal,
         ctx: &mut TxContext,
     ): ID {
         let id = object::new(ctx);
         let model_id = object::uid_to_inner(&id);
-        transfer::share_object(
-            ReservingFeeModel {
-                id,
-                multiplier: decimal::from_raw(multiplier),
-            }
-        );
+        transfer::share_object(ReservingFeeModel { id, multiplier });
         model_id
     }
 
     public(friend) fun create_funding_fee_model(
-        multiplier: u256,
-        max: u128,
+        multiplier: Decimal,
+        max: Rate,
         ctx: &mut TxContext,
     ): ID {
         let id = object::new(ctx);
         let model_id = object::uid_to_inner(&id);
-        transfer::share_object(
-            FundingFeeModel {
-                id,
-                multiplier: decimal::from_raw(multiplier),
-                max: rate::from_raw(max),
-            }
-        );
+        transfer::share_object(FundingFeeModel { id, multiplier, max });
         model_id
     }
 
