@@ -4,14 +4,14 @@ read -p "Import the env name (default: testnet): " env_name
 read -p "Import gas budget (default: 1000000000): " gas_budget
 read -p "Import the index coin name: " coin
 read -p "Import the symbol direction (default: LONG): " direction
-read -p "Import max price interval in seconds (default: 90): " max_interval
+read -p "Import max price interval in seconds (default: 15): " max_interval
 read -p "Import max price confidence (default: 18446744073709551615): " max_price_confidence
-read -p "Import param multiplier (default: 25000000000000000): " param_multiplier
-read -p "Import param max (default: 5000000000000000): " param_max
+read -p "Import param multiplier (default: 20000000000000000): " param_multiplier
+read -p "Import param max (default: 7500000000000000): " param_max
 read -p "Import max leverage (default: 100): " max_leverage
-read -p "Import min holding duration seconds (default: 30): " min_duration
-read -p "Import max reserved multiplier (default: 10): " max_reserved
-read -p "Import min position size (default: 10000000000000000000): " min_size
+read -p "Import min holding duration seconds (default: 15): " min_duration
+read -p "Import max reserved multiplier (default: 20): " max_reserved
+read -p "Import min collateral value (default: 5000000000000000000): " min_collateral_value
 read -p "Import open position fee bps (default 1000000000000000): " open_fee_bps
 read -p "Import decrease position fee bps (default 1000000000000000): " decrease_fee_bps
 read -p "Import liquidation threshold (default: 980000000000000000): " liq_threshold
@@ -31,28 +31,28 @@ if [ -z "$direction" ]; then
        direction="LONG"
 fi
 if [ -z "${max_interval}" ]; then
-       max_interval=90
+       max_interval=15
 fi
 if [ -z "${max_price_confidence}" ]; then
        max_price_confidence=18446744073709551615
 fi
 if [ -z "${param_multiplier}" ]; then
-    param_multiplier=25000000000000000
+    param_multiplier=20000000000000000
 fi
 if [ -z "${param_max}" ]; then
-    param_max=5000000000000000
+    param_max=7500000000000000
 fi
 if [ -z "${max_leverage}" ]; then
        max_leverage=100
 fi
 if [ -z "${min_duration}" ]; then
-       min_duration=30
+       min_duration=15
 fi
 if [ -z "${max_reserved}" ]; then
-       max_reserved=10
+       max_reserved=20
 fi
-if [ -z "${min_size}" ]; then
-       min_size=10000000000000000000
+if [ -z "${min_collateral_value}" ]; then
+       min_collateral_value=5000000000000000000
 fi
 if [ -z "${open_fee_bps}" ]; then
        open_fee_bps=1000000000000000

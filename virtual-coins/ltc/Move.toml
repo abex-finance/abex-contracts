@@ -1,7 +1,7 @@
 [package]
-name = "abex-doge"
+name = "abex-ltc"
 version = "0.0.1"
-published-at = "0x111d4592984483c78d8d05a1b3786d8de18f99604ece7b63e280f08bf3fff157"
+published-at = "0xabc"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
@@ -9,6 +9,6 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "sui-v1.1.1"
 
 [addresses]
-abex_doge = "0x111d4592984483c78d8d05a1b3786d8de18f99604ece7b63e280f08bf3fff157"
+abex_ltc = "0xabc"
 std = "0x1"
 sui = "0x2"

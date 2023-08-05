@@ -1,7 +1,7 @@
 [package]
-name = "abex-fsui"
+name = "abex-dot"
 version = "0.0.1"
-published-at = "0x8ee5c1a695a44f455865bf1d9ca457f6735afbb94c9616cffce71783baa799f5"
+published-at = "0xabc"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
@@ -9,6 +9,6 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "sui-v1.1.1"
 
 [addresses]
-abex_fsui = "0x8ee5c1a695a44f455865bf1d9ca457f6735afbb94c9616cffce71783baa799f5"
+abex_dot = "0xabc"
 std = "0x1"
 sui = "0x2"

@@ -3,10 +3,10 @@
 read -p "Import the env name (default: testnet): " env_name
 read -p "Import gas budget (default: 1000000000): " gas_budget
 read -p "Import vault coin name: " coin
-read -p "Import vault weight: (default: 1000000000000000000): " weight
-read -p "Import max price interval in seconds (default: 90): " max_interval
+read -p "Import vault weight: (default: 100000000000000000): " weight
+read -p "Import max price interval in seconds (default: 15): " max_interval
 read -p "Import max price confidence (default: 18446744073709551615): " max_price_confidence
-read -p "Import param multiplier (default: 1000000000000000): " param_multiplier
+read -p "Import param multiplier (default: 800000000000000): " param_multiplier
 
 if [ -z "$gas_budget" ]; then
        gas_budget=1000000000
@@ -18,16 +18,16 @@ deployments="../../deployments-$env_name.json"
 config="/root/.sui/sui_config/$env_name-client.yaml"
 
 if [ -z "$weight" ]; then
-       weight=1000000000000000000
+       weight=100000000000000000
 fi
 if [ -z "${max_interval}" ]; then
-       max_interval=90
+       max_interval=15
 fi
 if [ -z "${max_price_confidence}" ]; then
        max_price_confidence=18446744073709551615
 fi
 if [ -z "${param_multiplier}" ]; then
-    param_multiplier=1000000000000000
+    param_multiplier=800000000000000
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`

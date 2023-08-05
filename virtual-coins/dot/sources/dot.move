@@ -1,25 +1,25 @@
 
-module abex_doge::doge {
+module abex_dot::dot {
     use std::option;
 
     use sui::transfer;
     use sui::coin;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
 
-    struct DOGE has drop {}
+    struct DOT has drop {}
 
-    fun init(witness: DOGE, ctx: &mut TxContext) {
+    fun init(witness: DOT, ctx: &mut TxContext) {
         let (treasury, metadata) = coin::create_currency(
             witness,
-            8,
-            b"DOGE",
-            b"ABEx Test Doge",
-            b"ABEx Test Doge",
+            10,
+            b"DOT",
+            b"Wrapped Polkadot",
+            b"ABEx Virtual Coin",
             option::none(),
             ctx,
         );
         transfer::public_freeze_object(metadata);
-        // This is a virtual token.
+        // This is a virtual token, without treasury.
         transfer::public_freeze_object(treasury);
     }
 }

@@ -85,10 +85,28 @@
       "treasury": null
     },
     "btc": {
-      "decimals": 9,
-      "module": "0xaae67868f64585f2029b7d66a2ecd286e1493776097c98ae7ed499c954dd4e68::btc::BTC",
-      "metadata": "0xe7728279203190ac50eac460dc12b9e4d72d8fc60454d8803b38b5307925d539",
-      "treasury": "0x874d52c86d11a13eb7b433e0b3a53f6eaa255bec5bd181b677b56c6c1a8d55ae"
+      "decimals": 8,
+      "module": "0x027792d9fed7f9844eb4839566001bb6f6cb4804f66aa2da6fe1ee242d896881::coin::COIN",
+      "metadata": "0x5d3c6e60eeff8a05b693b481539e7847dfe33013e7070cdcb387f5c0cac05dfd",
+      "treasury": null
+    },
+    "eth": {
+      "decimals": 8,
+      "module": "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN",
+      "metadata": "0x8900e4ceede3363bef086d6b50ca89d816d0e90bf6bc46efefe1f8455e08f50f",
+      "treasury": null
+    },
+    "bnb": {
+      "decimals": 8,
+      "module": "0xb848cce11ef3a8f62eccea6eb5b35a12c4c2b1ee1af7755d02d7bd6218e8226f::coin::COIN",
+      "metadata": "0x1d0975ab0726f2e52384b6ea0f2c94c2dbdad8b004ee6b5ee552a3c789c044f0",
+      "treasury": null
+    },
+    "usdc": {
+      "decimals": 6,
+      "module": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+      "metadata": "0x4fbf84f3029bd0c0b77164b587963be957f853eccf834a67bb9ecba6ec80f189",
+      "treasury": null
     },
     "usdt": {
       "decimals": 6,
@@ -96,10 +114,16 @@
       "metadata": "0xfb0e3eb97dd158a5ae979dddfa24348063843c5b20eb8381dd5fa7c93699e45c",
       "treasury": null
     },
-    "usdc": {
-      "decimals": 6,
-      "module": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
-      "metadata": "0x4fbf84f3029bd0c0b77164b587963be957f853eccf834a67bb9ecba6ec80f189",
+    "sol": {
+      "decimals": 8,
+      "module": "0xb7844e289a8410e50fb3ca48d69eb9cf29e27d223ef90353fe1bd8e27ff8f3f8::coin::COIN",
+      "metadata": "0x4d2c39082b4477e3e79dc4562d939147ab90c42fc5f3e4acf03b94383cd69b6e",
+      "treasury": null
+    },
+    "avax": {
+      "decimals": 8,
+      "module": "0x1e8b532cca6569cab9f9b9ebc73f8c13885012ade714729aa3b450e0339ac766::coin::COIN",
+      "metadata": "0x23580088ff9f83848f86bc1cbf4964735116027e9cccad11b2dc96f16badab72",
       "treasury": null
     }
   }
