@@ -1,6 +1,6 @@
 #!/bin/bash
 
-read -p "Import the env name (default: testnet): " env_name
+read -p "Import the env name (default: mainnet): " env_name
 read -p "Import gas budget (default: 1000000000): " gas_budget
 read -p "Import vault coin name: " coin
 read -p "Import vault weight: (default: 100000000000000000): " weight
@@ -12,7 +12,7 @@ if [ -z "$gas_budget" ]; then
        gas_budget=1000000000
 fi
 if [ -z "$env_name" ]; then
-       env_name="testnet"
+       env_name="mainnet"
 fi
 deployments="../../deployments-$env_name.json"
 config="/root/.sui/sui_config/$env_name-client.yaml"
