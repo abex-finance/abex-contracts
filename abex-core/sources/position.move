@@ -157,13 +157,10 @@ module abex_core::position {
             return (ERR_INSUFFICIENT_COLLATERAL, option::none())
         };
 
-        // take away open fee
-        let open_fee = balance::split(collateral, open_fee_amount);
-
         // compute collateral value
         let collateral_value = agg_price::coins_to_value(
             collateral_price,
-            balance::value(collateral),
+            balance::value(collateral) - open_fee_amount,
         );
         if (decimal::lt(&collateral_value, &config.min_collateral_value)) {
             return (ERR_COLLATERAL_VALUE_TOO_LESS, option::none())
@@ -174,6 +171,9 @@ module abex_core::position {
         if (!ok) {
             return (ERR_LEVERAGE_TOO_LARGE, option::none())
         };
+
+        // take away open fee
+        let open_fee = balance::split(collateral, open_fee_amount);
 
         // construct position
         let position = Position {
