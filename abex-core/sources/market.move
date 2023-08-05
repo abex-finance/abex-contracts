@@ -312,8 +312,8 @@ module abex_core::market {
     ) {
         // create rebase fee model
         let model_id = model::create_rebase_fee_model(
-            100_000_000_000_000, // 0.0001
-            10_000_000_000_000_000, // 0.01
+            rate::from_permyriad(1), // 0.01 %
+            decimal::from_raw(10_000_000_000_000_000), // 0.01
             ctx,
         );
 
@@ -357,7 +357,10 @@ module abex_core::market {
         ctx: &mut TxContext,
     ) {
         // create reserving fee model
-        let model_id = model::create_reserving_fee_model(param_multiplier, ctx);
+        let model_id = model::create_reserving_fee_model(
+            decimal::from_raw(param_multiplier),
+            ctx,
+        );
 
         let vault = pool::new_vault<C>(
             weight,
@@ -396,8 +399,8 @@ module abex_core::market {
     ) {
         // create funding fee model
         let model_id = model::create_funding_fee_model(
-            param_multiplier,
-            param_max,
+            decimal::from_raw(param_multiplier),
+            rate::from_raw(param_max),
             ctx,
         );
 
