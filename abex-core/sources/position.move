@@ -286,7 +286,7 @@ module abex_core::position {
             collateral_price,
             sdecimal::value(&settled_delta_size),
         );
-        let (settled_amount, decreased_reserved_amount) = if (has_profit) {
+        let settled_amount = if (has_profit) {
             let profit_amount = decimal::floor_u64(settled_amount);
             if (profit_amount >= balance::value(&position.reserved)) {
                 // should close position if reserved is not enough to pay profit
@@ -294,7 +294,7 @@ module abex_core::position {
                 profit_amount = balance::value(&position.reserved);
             };
             
-            (profit_amount, profit_amount)
+            profit_amount
         } else {
             let loss_amount = decimal::ceil_u64(settled_amount);
             if (loss_amount >= balance::value(&position.collateral)) {
@@ -303,7 +303,12 @@ module abex_core::position {
                 loss_amount = balance::value(&position.collateral);
             };
 
-            (loss_amount, if (closed) { balance::value(&position.reserved) } else { 0 })
+            loss_amount
+        };
+        let decreased_reserved_amount = if (closed) {
+            balance::value(&position.reserved)
+        } else {
+            if (has_profit) { settled_amount } else { 0 }
         };
 
         let position_amount = position.position_amount - decrease_amount;
