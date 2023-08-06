@@ -139,6 +139,7 @@ module abex_core::market {
         price: Decimal,
         deposit_amount: u64,
         mint_amount: u64,
+        fee_value: Decimal,
     }
 
     struct Withdrawn<phantom C> has copy, drop {
@@ -146,6 +147,7 @@ module abex_core::market {
         price: Decimal,
         withdraw_amount: u64,
         burn_amount: u64,
+        fee_value: Decimal,
     }
 
     struct Swapped<phantom S, phantom D> has copy, drop {
@@ -154,6 +156,7 @@ module abex_core::market {
         dest_price: Decimal,
         source_amount: u64,
         dest_amount: u64,
+        fee_value: Decimal,
     }
 
     struct OrderCreated<N: copy + drop, E: copy + drop> has copy, drop {
@@ -1331,7 +1334,7 @@ module abex_core::market {
 
         let vault: &mut Vault<C> = bag::borrow_mut(&mut market.vaults, VaultName<C> {});
 
-        let mint_amount = pool::deposit(
+        let (mint_amount, fee_value) = pool::deposit(
             vault,
             model,
             &price,
@@ -1354,6 +1357,7 @@ module abex_core::market {
             price: agg_price::price_of(&price),
             deposit_amount,
             mint_amount,
+            fee_value,
         });
     }
 
@@ -1395,7 +1399,7 @@ module abex_core::market {
         );
 
         // withdraw to burner
-        let withdraw = pool::withdraw(
+        let (withdraw, fee_value) = pool::withdraw(
             vault,
             model,
             &price,
@@ -1417,6 +1421,7 @@ module abex_core::market {
             price: agg_price::price_of(&price),
             withdraw_amount,
             burn_amount,
+            fee_value,
         });
     }
 
@@ -1449,7 +1454,7 @@ module abex_core::market {
             vec_map::remove(&mut handled_vaults, &type_name::get<VaultName<D>>());
 
         // swap step 1
-        let swap_value = pool::swap_in<S>(
+        let (swap_value, source_fee_value) = pool::swap_in<S>(
             bag::borrow_mut(&mut market.vaults, VaultName<S> {}),
             model,
             &source_price,
@@ -1460,7 +1465,7 @@ module abex_core::market {
         );
 
         // swap step 2
-        let receiving = pool::swap_out<D>(
+        let (receiving, dest_fee_value) = pool::swap_out<D>(
             bag::borrow_mut(&mut market.vaults, VaultName<D> {}),
             model,
             &dest_price,
@@ -1481,6 +1486,7 @@ module abex_core::market {
             dest_price: agg_price::price_of(&dest_price),
             source_amount,
             dest_amount,
+            fee_value: decimal::add(source_fee_value, dest_fee_value),
         });
     }
 
