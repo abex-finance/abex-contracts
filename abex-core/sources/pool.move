@@ -735,7 +735,7 @@ module abex_core::pool {
         );
 
         // update vault
-        vault.reserved_amount = vault.reserved_amount - balance::value(&decreased_reserved);
+        vault.reserved_amount = vault.reserved_amount - decrease_amount;
         let _ = balance::join(&mut vault.liquidity, decreased_reserved);
 
         DecreaseReservedFromPositionEvent { decrease_amount }
