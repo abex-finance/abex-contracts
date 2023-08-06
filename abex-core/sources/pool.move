@@ -257,7 +257,7 @@ module abex_core::pool {
         vault_value: Decimal,
         total_vaults_value: Decimal,
         total_weight: Decimal,
-    ): u64 {
+    ): (u64, Decimal) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         let deposit_amount = balance::value(&deposit);
         assert!(deposit_amount > 0, ERR_INVALID_DEPOSIT_AMOUNT);
@@ -272,10 +272,8 @@ module abex_core::pool {
             vault.weight,
             total_weight,
         );
-        deposit_value = decimal::sub(
-            deposit_value,
-            decimal::mul_with_rate(deposit_value, fee_rate),
-        );
+        let fee_value = decimal::mul_with_rate(deposit_value, fee_rate);
+        deposit_value = decimal::sub(deposit_value, fee_value);
 
         balance::join(&mut vault.liquidity, deposit);
 
@@ -297,7 +295,7 @@ module abex_core::pool {
         };
         assert!(mint_amount >= min_amount_out, ERR_AMOUNT_OUT_TOO_LESS);
 
-        mint_amount
+        (mint_amount, fee_value)
     }
 
     public(friend) fun withdraw<C>(
@@ -311,7 +309,7 @@ module abex_core::pool {
         vault_value: Decimal,
         total_vaults_value: Decimal,
         total_weight: Decimal,
-    ): Balance<C> {
+    ): (Balance<C>, Decimal) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(burn_amount > 0, ERR_INVALID_BURN_AMOUNT);
 
@@ -336,10 +334,8 @@ module abex_core::pool {
             vault.weight,
             total_weight,
         );
-        withdraw_value = decimal::sub(
-            withdraw_value,
-            decimal::mul_with_rate(withdraw_value, fee_rate),
-        );
+        let fee_value = decimal::mul_with_rate(withdraw_value, fee_rate);
+        withdraw_value = decimal::sub(withdraw_value, fee_value);
 
         let withdraw_amount = decimal::floor_u64(
             agg_price::value_to_coins(price, withdraw_value)
@@ -355,7 +351,7 @@ module abex_core::pool {
             ERR_AMOUNT_OUT_TOO_LESS,
         );
 
-        withdraw
+        (withdraw, fee_value)
     }
 
     public(friend) fun swap_in<S>(
@@ -366,7 +362,7 @@ module abex_core::pool {
         source_vault_value: Decimal,
         total_vaults_value: Decimal,
         total_weight: Decimal,
-    ): Decimal {
+    ): (Decimal, Decimal) {
         assert!(source_vault.enabled, ERR_VAULT_DISABLED);
         let source_amount = balance::value(&source);
         assert!(source_amount > 0, ERR_INVALID_SWAP_AMOUNT);
@@ -383,9 +379,11 @@ module abex_core::pool {
             source_vault.weight,
             total_weight,
         );
-        decimal::sub(
-            swap_value,
-            decimal::mul_with_rate(swap_value, source_fee_rate),
+        let source_fee_value = decimal::mul_with_rate(swap_value, source_fee_rate);
+
+        (
+            decimal::sub(swap_value, source_fee_value),
+            source_fee_value,
         )
     }
 
@@ -398,7 +396,7 @@ module abex_core::pool {
         dest_vault_value: Decimal,
         total_vaults_value: Decimal,
         total_weight: Decimal,
-    ): Balance<D> {
+    ): (Balance<D>, Decimal) {
         assert!(dest_vault.enabled, ERR_VAULT_DISABLED);
 
         // handle swapping out
@@ -415,10 +413,9 @@ module abex_core::pool {
             dest_vault.weight,
             total_weight,
         );
-        swap_value = decimal::sub(
-            swap_value,
-            decimal::mul_with_rate(swap_value, dest_fee_rate),
-        );
+        let dest_fee_value = decimal::mul_with_rate(swap_value, dest_fee_rate);
+        swap_value = decimal::sub(swap_value, dest_fee_value);
+        
         let dest_amount = decimal::floor_u64(
             agg_price::value_to_coins(dest_price, swap_value)
         );
@@ -428,7 +425,10 @@ module abex_core::pool {
             ERR_INSUFFICIENT_LIQUIDITY,
         );
 
-        balance::split(&mut dest_vault.liquidity, dest_amount)
+        (
+            balance::split(&mut dest_vault.liquidity, dest_amount),
+            dest_fee_value,
+        )
     }
 
     public(friend) fun open_position<C>(
