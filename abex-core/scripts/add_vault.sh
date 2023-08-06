@@ -4,7 +4,7 @@ read -p "Import the env name (default: mainnet): " env_name
 read -p "Import gas budget (default: 1000000000): " gas_budget
 read -p "Import vault coin name: " coin
 read -p "Import vault weight: (default: 100000000000000000): " weight
-read -p "Import max price interval in seconds (default: 15): " max_interval
+read -p "Import max price interval in seconds (default: 20): " max_interval
 read -p "Import max price confidence (default: 18446744073709551615): " max_price_confidence
 read -p "Import param multiplier (default: 800000000000000): " param_multiplier
 
