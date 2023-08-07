@@ -165,13 +165,11 @@ module abex_core::pool {
     fun refresh_vault<C>(
         vault: &mut Vault<C>,
         reserving_fee_model: &ReservingFeeModel,
-        supply_amount: Decimal,
         timestamp: u64,
     ) {
         let delta_rate = vault_delta_reserving_rate(
             vault,
             reserving_fee_model,
-            supply_amount,
             timestamp,
         );
         vault.acc_reserving_rate = vault_acc_reserving_rate(vault, delta_rate);
@@ -472,8 +470,7 @@ module abex_core::pool {
         );
 
         // refresh vault
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
+        refresh_vault(vault, reserving_fee_model, timestamp);
         // refresh symbol
         let delta_size = symbol_delta_size(symbol, index_price, long);
         refresh_symbol(
@@ -592,8 +589,7 @@ module abex_core::pool {
         );
 
         // refresh vault
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
+        refresh_vault(vault, reserving_fee_model, timestamp);
         // refresh symbol
         let delta_size = symbol_delta_size(symbol, index_price, long);
         refresh_symbol(
@@ -725,8 +721,7 @@ module abex_core::pool {
         );
 
         // refresh vault
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
+        refresh_vault(vault, reserving_fee_model, timestamp);
 
         let decreased_reserved = position::decrease_reserved_from_position(
             position,
@@ -776,8 +771,7 @@ module abex_core::pool {
         );
 
         // refresh vault
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
+        refresh_vault(vault, reserving_fee_model, timestamp);
         // refresh symbol
         let delta_size = symbol_delta_size(symbol, index_price, long);
         refresh_symbol(
@@ -834,8 +828,7 @@ module abex_core::pool {
         );
 
         // refresh vault
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
+        refresh_vault(vault, reserving_fee_model, timestamp);
         // refresh symbol
         let delta_size = symbol_delta_size(symbol, index_price, long);
         refresh_symbol(
@@ -920,13 +913,11 @@ module abex_core::pool {
             ERR_MISMATCHED_RESERVING_FEE_MODEL,
         );
 
-        let supply_amount = vault_supply_amount(vault);
-        refresh_vault(vault, reserving_fee_model, supply_amount, timestamp);
-        supply_amount = decimal::add(
-            supply_amount,
-            vault.unrealised_reserving_fee_amount,
-        );
-        agg_price::coins_to_value(price, decimal::floor_u64(supply_amount))
+        refresh_vault(vault, reserving_fee_model, timestamp);
+        agg_price::coins_to_value(
+            price,
+            decimal::floor_u64(vault_supply_amount(vault)),
+        )
     }
 
     public(friend) fun valuate_symbol(
@@ -979,10 +970,8 @@ module abex_core::pool {
         vault.reserved_amount
     }
 
-    public fun vault_utilization<C>(
-        vault: &Vault<C>,
-        supply_amount: Decimal,
-    ): Rate {
+    public fun vault_utilization<C>(vault: &Vault<C>): Rate {
+        let supply_amount = vault_supply_amount(vault);
         if (decimal::is_zero(&supply_amount)) {
             rate::zero()
         } else {
@@ -1008,7 +997,6 @@ module abex_core::pool {
     public fun vault_delta_reserving_rate<C>(
         vault: &Vault<C>,
         reserving_fee_model: &ReservingFeeModel,
-        supply_amount: Decimal,
         timestamp: u64,
     ): Rate {
         if (vault.last_update > 0) {
@@ -1016,7 +1004,7 @@ module abex_core::pool {
             if (elapsed > 0) {
                 return model::compute_reserving_fee_rate(
                     reserving_fee_model,
-                    vault_utilization(vault, supply_amount),
+                    vault_utilization(vault),
                     elapsed,
                 )
             }
