@@ -31,7 +31,7 @@ if [ -z "$direction" ]; then
        direction="LONG"
 fi
 if [ -z "${max_interval}" ]; then
-       max_interval=15
+       max_interval=20
 fi
 if [ -z "${max_price_confidence}" ]; then
        max_price_confidence=18446744073709551615
@@ -46,7 +46,7 @@ if [ -z "${max_leverage}" ]; then
        max_leverage=100
 fi
 if [ -z "${min_duration}" ]; then
-       min_duration=15
+       min_duration=20
 fi
 if [ -z "${max_reserved}" ]; then
        max_reserved=20

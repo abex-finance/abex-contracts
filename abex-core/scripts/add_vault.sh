@@ -21,7 +21,7 @@ if [ -z "$weight" ]; then
        weight=100000000000000000
 fi
 if [ -z "${max_interval}" ]; then
-       max_interval=15
+       max_interval=20
 fi
 if [ -z "${max_price_confidence}" ]; then
        max_price_confidence=18446744073709551615
