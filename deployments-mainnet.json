@@ -1,26 +1,26 @@
 {
   "abex_core": {
-    "package": "0xd007ee15032ff09b445d4ee2e78ed5864e3b130a5b9a083c101d790c57309682",
-    "upgrade_cap": "0xa4289e7121e9902d8fc12bfcda346b087c856e4552b5276370fc9d8167cf07d8",
-    "admin_cap": "0x1453928a9613e26d0b2da41e3491306cbbd79231b6c9924dd2c14fe284d9795e",
-    "market": "0xd7b89b610959adcc5d633ff7c43947804ed37ff3aea17eb77b26ed92873c0eb4",
-    "alp_metadata": "0x8231492b912f8bd090d9fb1ba5e7fbe260c5edac7706391e5ab02b8f3e520181",
-    "rebase_fee_model": "0x462fcd8cef84937faee77af80f1b6cf61f8d0d37bd8dcf351a769e0a88df05ad",
-    "vaults_parent": "0x0771912451c7374e373cbb30a0dc42711695635fd503e695e67e17ac9bc78e98",
-    "symbols_parent": "0xf1bb5de5d46f22facce41c4a3b5f893781d3491bad09914b15504a0e923d4aa3",
-    "positions_parent": "0xbda620c70ac8fc3123ec627e8e0fb25b59fd71086407af87ccbc903c095c2a28",
+    "package": "0xceab84acf6bf70f503c3b0627acaff6b3f84cee0f2d7ed53d00fa6c2a168d14f",
+    "upgrade_cap": "0x2b117061b408979881624c3724d8316c976308396e38d971164f2a65087bc726",
+    "admin_cap": "0x7806e23aa5b39b768a10bbe440438e85ede1943675145c26f96706fe7cd3234c",
+    "market": "0x7705d4670e7ef4623d6392888f73f6773b5f0218b6cb1486a4be238692a58bca",
+    "alp_metadata": "0xaa85795a822c8d267582f01cef583bba67f7aeeb3953f722008802f33d123997",
+    "rebase_fee_model": "0xf22dade6ffddf5a70f7fa433d34e061c4603d6249741b2c596554872f71469ad",
+    "vaults_parent": "0x3c6595e543c4766dd63b5b2fa918516bac2920bc1944da068be031dced46a18d",
+    "symbols_parent": "0xa23d31c1fed163b675911aef7ed57bf4acf9f21f41fca02df7cef42c87083351",
+    "positions_parent": "0x251910096bd975afdb4413a3b4c0a158b0097c0c4cd242e1a24db5882011cac2",
     "vaults": {
       "sui": {
         "weight": "100000000000000000",
-        "reserving_fee_model": "0xe0ed0dad6f993f6b7e0eeb6eca198cac875ff87b98e74a5cfda42700e88d3b42"
-      },
-      "usdt": {
-        "weight": "300000000000000000",
-        "reserving_fee_model": "0x34ad1f9b6e7c9a1ebb1f3d8c1b3b6bb4027ba5866ac6a963a13d8890f8129edb"
+        "reserving_fee_model": "0x399c8e85198dfa743d30510bd1aee177e7ad87e760b1a597834817c0b63b738a"
       },
       "usdc": {
         "weight": "600000000000000000",
-        "reserving_fee_model": "0x6fe627809d82f7b34d3d0d7869ac0728266bdbccda49f19c706818c15027c69e"
+        "reserving_fee_model": "0x317ecf514961f6a54c24004fbe67851411dfa4401698b1e1b9973ff1f2dbb349"
+      },
+      "usdt": {
+        "weight": "300000000000000000",
+        "reserving_fee_model": "0x64beb67b9d62cf4c85ef80afe780e179edc536aa831d092186cbfec69cad6f24"
       }
     },
     "symbols": {
@@ -30,8 +30,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x9687545798fa46c90f4e15f7c7570a7b4298670a4f055195a74a093b3c02101f",
-        "position_config": "0x60f67d77243c4a67f3a9371060f40252d7b70bbfd166ab8a218fa085361dad02"
+        "funding_fee_model": "0xc04b87ef014038ae78cb20e7942b1dddfd6b63894af5504ae44a4732e6fc2b2f",
+        "position_config": "0xc168133ab91aa70ff257b749d593b7cc74c492d3f8324a141578a6b95cc61ddb"
       },
       "short_btc": {
         "supported_collaterals": [
@@ -39,8 +39,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x88819f0e8cf70da72b408f03ca395fe7beb0347e49e4dc2b35827cb05d503031",
-        "position_config": "0x2f8581f5fa92b370dfc6812da61fa32a7c2a49d75d482fbfc1361c35850eafcb"
+        "funding_fee_model": "0x07f83dde333e1c42c64ad0233d7f72164ee0ec628e632249df1c483d2e567b27",
+        "position_config": "0xaf26d0abeeb539fde005ba131d19ad2bf40e75f0bd23c7aa986b3edd91028afb"
       },
       "long_eth": {
         "supported_collaterals": [
@@ -48,8 +48,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x1d95948aa00dfd4c0d9c6bf3a084b261e1e6ac8cdf09cdc7e0c48149f03928c9",
-        "position_config": "0xb20f8ae68c55c2ad696f4264c4879b61e23914c8d5a3ed74ee9b2f1d8dd623bf"
+        "funding_fee_model": "0x44224a4666b76eb8c86850a1cc6c2d4a2317eba53a5055566011df946007f999",
+        "position_config": "0xeb2309c0cbde79e21234d90fb555e6d902036ed4bf6b372d5b8b03eb5fd56216"
       },
       "short_eth": {
         "supported_collaterals": [
@@ -57,8 +57,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xef0de7dddafb6f8b9cde10c464248d0b222dc117e7f6ac75f7d73d059e865c17",
-        "position_config": "0xfd11ca9202b642077edb859a5a0ae263e9168acd407175d8fc176364c2c00abc"
+        "funding_fee_model": "0x527e696085bdb06c724e5dd69f1f8ebc4feff566047619cbf7a5a0f37789b787",
+        "position_config": "0x17e30687f8eb1755ea29166bab8998566b7d787bf07c53f507f04765da722d4b"
       },
       "long_bnb": {
         "supported_collaterals": [
@@ -66,8 +66,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xc881565c53183995eb68763b0aa67b94a911af137a1002afbe03b1f8aed41b19",
-        "position_config": "0xf400dd8bd3ecaa8b9435cc9388e4c57efd81599cb893e816156b2299d0a2ebf4"
+        "funding_fee_model": "0x04da7aa452f72c631fcddc8e5cf93aa391a72045f26b130005c3d141c1342145",
+        "position_config": "0x0c74d87945f822049c760ac00c5a6eecbd2b885f6ced49e3bfec06bb6b9c7bda"
       },
       "short_bnb": {
         "supported_collaterals": [
@@ -75,8 +75,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xbb3e9970a0ee627e49e7a89a5a87c05b4cc7164fce3ff4d058b35eb402279d45",
-        "position_config": "0xb289887d16af7cc83e1bd3b2b71c336a3b55742c7cfbab685d3c0a92f6be439e"
+        "funding_fee_model": "0xeffad81d63384babe35b968fa82d4a5292567e6f969e5cf34f902b5e0cd9a66d",
+        "position_config": "0x34766fbeecd31a32cfff3444d97db74cc00c61abd5df0f046a1c4d75d3c04043"
       },
       "long_ada": {
         "supported_collaterals": [
@@ -84,8 +84,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xe9d6517cde2839b592dd914a6e82f1189ee225088125d7bb0bce5373fa23fd0d",
-        "position_config": "0xd71608ebccff1b7a45200bfc1980101733ca26e21c09e363254087021a0efd7a"
+        "funding_fee_model": "0xc9f2f57a59a993826258318ffbe78e4c3721330dbb7e3758b917ea867f1785ce",
+        "position_config": "0x5acda9b78fc6a2ec75f6625fc5f68e2e92317348fd9be60668b95ec0d1502a38"
       },
       "short_ada": {
         "supported_collaterals": [
@@ -93,8 +93,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x2268bb4e081ee4d22962c686ae68c994911c463144c0d3ac23e9f147ea08372f",
-        "position_config": "0x3cdfd79584f27bae09575fe8b4a91309e46bb36e2b97fe2e6cef7c334f0b2728"
+        "funding_fee_model": "0xa15a8e19c7a663c84d4c8562a8b457f04d4d0d45b9be76a2bba61fbdcc62f65e",
+        "position_config": "0x34cd7c7ef41b87c4a3de5e92100e332755c471cd674f54059ddfb1442e2a9e69"
       },
       "long_doge": {
         "supported_collaterals": [
@@ -102,8 +102,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x0314e8c7695abf3b4e73a1d1bd9321a60b3a61e9b5811a8dfc0a6e30471cf554",
-        "position_config": "0xf99ae1bfb204baffb0e6d3c0e73eda97fd27d4b84cdfd5ddf88b4677a2e0da13"
+        "funding_fee_model": "0x8c9d95819dbe07f36596d845b2b37b98dfa4ed4949003114d6e5b0b253242913",
+        "position_config": "0xb7287d40881baa9789e22086c757d16dfbfdb377e87cd58e4853cdca70547957"
       },
       "short_doge": {
         "supported_collaterals": [
@@ -111,8 +111,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x628974baaf2a15c3a3132a2bd1c438b23bc0fd04ae586176aeeecfb84739f075",
-        "position_config": "0x2588b5058f3b335e3cb879de9c25b7fbe3d448975357bb45fd6a9a96740bd7d6"
+        "funding_fee_model": "0x2c6c6861ea20ea6af4c88ac175745ca5de1d6df5cfa29764301fb8fbcb61330d",
+        "position_config": "0xeb491a6e9fbf93a23fd4d9a001d34974d12c6edbf55d5bf0f9fb85d05dd30f58"
       },
       "long_sol": {
         "supported_collaterals": [
@@ -120,17 +120,17 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x67244aa5d7e99558c2a55e58f41c148d429dc12bc60cff2b021ab16dc7f571d7",
-        "position_config": "0x852ecd070af4d4870da2e67a7cd42f87e997e2efbc5ea24f61abb412a710f955"
+        "funding_fee_model": "0x61f2c3f5fa7e824ce098044687a53124e56641a766b8d39fa28d4597394baa66",
+        "position_config": "0x1a8f32f676740c0fb2715d1b7fe2df7963d501746134ff851e1f3704afaa3566"
       },
       "short_sol": {
         "supported_collaterals": [
+          "sui",
           "usdt",
-          "usdc",
-          "sui"
+          "usdc"
         ],
-        "funding_fee_model": "0xee2df9e1dc3cfd689803cd1c6683944179254a4f7ac0ea9801455bc92da1f5e6",
-        "position_config": "0x35e424d8584baa5f736625c042846e31c5cf043ad3fb11960a55f4a932b780b5"
+        "funding_fee_model": "0xf8a1b1f34fc5ac5b7733fbbf869c6decd269b08004287a115720305138d9f9f8",
+        "position_config": "0xc041a3ba0ef4a65feab627e75df43c20c626972f35029b3e7c5c51c72827ea07"
       },
       "long_ltc": {
         "supported_collaterals": [
@@ -138,8 +138,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xfc95444fb62ca5567fa98e8247f4d9c3f8c3585613bfd03137e3920977355537",
-        "position_config": "0x01df5b849d3495ad8d2db9ee4380bab9786dd84c2a0b17cb7704db2032589b9b"
+        "funding_fee_model": "0x3daa2d79d4b34f8d76126d9aa0df8675f3dc2e801ffff2f04850558e9df79be3",
+        "position_config": "0x4fa4d4b47bd6b5c611b513bc3b79645a04a085e4e973d76b4aced44d7631b179"
       },
       "short_ltc": {
         "supported_collaterals": [
@@ -147,8 +147,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xff9d38b5ecdcd12cdcd9d479d67686aa8e90ca214de25244a619dc0576034016",
-        "position_config": "0xcb8e43b4e4d388b8bb80bac456018949d14c2daab98a9975aef7fd5ea3e835dc"
+        "funding_fee_model": "0xddd9646f8d234d09dd640a30cf6e1d9b217a054e9ad77dc952d43f33927dbca8",
+        "position_config": "0xa0375a4e9d063b387dcddcb37c874e7e2287b29385acca7c6b78a9e30b982041"
       },
       "long_dot": {
         "supported_collaterals": [
@@ -156,8 +156,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xedc583b91e9243349d6b745ffc17421dc00f7222526ca6b2873898cacc4001d7",
-        "position_config": "0x5f593e2206b3ee1b6bf266e83b9d24d85902778ba984c3de85230bb946152fa7"
+        "funding_fee_model": "0xe48fbbd44305658566ad708ba380d1f3c83a2e93361f72989baa40f110a8cddf",
+        "position_config": "0x56d2ca3714d5bd1f44df556a415f3c1d88abad791b616e7c971871094d708470"
       },
       "short_dot": {
         "supported_collaterals": [
@@ -165,8 +165,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x68cb5b063c6758a5028a4797f652551da2a7e1175a8052b33c49f31e39df1291",
-        "position_config": "0xc1290bbd70526372efa24827b8432a34d0aa7746e04945478c33d812679e130c"
+        "funding_fee_model": "0xdcfc6b6e0ce466929e8b6ae37b8cbf0c9e4509256093a70daf82ac58063c4ae5",
+        "position_config": "0x5eaa4e5cf29b7ec8631a995803b40a028dd429261890f81ba9f8a76baa0bc272"
       },
       "long_avax": {
         "supported_collaterals": [
@@ -174,8 +174,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xc470753a50d720958fe6b09fb582094cdb3cc7ddb46f1781766f51fedb771240",
-        "position_config": "0x816dbf45f065a4aca43009075648d01933156ecfd86fe4d9327ec4cfd9e16f8d"
+        "funding_fee_model": "0xd01241ada6283a8ba06078e1bade96f635a6b593cf134c4b85da9f9c040f0dec",
+        "position_config": "0x00274716f8239be07426b2b620eb5c92be52aa5ccc99cf63ce8190b78501f52a"
       },
       "short_avax": {
         "supported_collaterals": [
@@ -183,8 +183,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x7cd20b64206c84f384315d9c296802a7a21248329f0994561b1d277ff41ad9c1",
-        "position_config": "0xc0d93f804a3e69374a3aa24aa14fc3aa1704c5cc3d53879adbc67187564870db"
+        "funding_fee_model": "0x4ba99afaba455d22fa19dc9cfacb52b05875f802ea3f69db1e9669e3739a7e9c",
+        "position_config": "0x8c72fce88469910e192818c41d7f49a2f03a87ee12263c3ebee9df029c46889c"
       },
       "long_sui": {
         "supported_collaterals": [
@@ -192,8 +192,8 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xd62fb5262e4b5b8d57fe5a4afb17e27e61c2900f763e5fa15e6f4bd5a512121d",
-        "position_config": "0x96979f606d3c6c30fb2515427bec4b72190db49a635bcc0723219cf67834c190"
+        "funding_fee_model": "0xc2afee98274bfc9ab93139ce76406af45dc3c1b64ff694166359c04a2ee6a932",
+        "position_config": "0xa838f67e017148b0a55f0480355a0b50ee6f89eef8ae142500fb6a85ecc58dbd"
       },
       "short_sui": {
         "supported_collaterals": [
@@ -201,12 +201,12 @@
           "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xa51227ca78d1504ac06030f205fc9c5921567c2b019144eecf08f227e5b4a9dc",
-        "position_config": "0xcd38d3b9a57171e7b7d8fbf1f0d4196938cfe8053d18ebccd94e0abf54e2ca14"
+        "funding_fee_model": "0xec7ae38984b89805912c9bc1cb90e9a86bcfe0978e8c1b1f8de048593d7907e0",
+        "position_config": "0xb18548c1d3d90b30ed911a65de363e141f821733de5b2da019b028038c20c688"
       }
     },
-    "referrals_parent": "0xf52a24b30a8a6ff57837c485e5452e2b5709ed3c6eec7deb1de5d6eb87545bdb",
-    "orders_parent": "0x54f6bc6ec62d94c1efbc20a12d48abb908b8c12a87a938b4af126eb3a6af64ac"
+    "referrals_parent": "0xbf981cf3f532dc8e4f236554ba4dd6e0e3c4844b5cf877f9012a932c3d0bf639",
+    "orders_parent": "0x6a318ab871926d031bd3bf2cebb0426d44d917f0cc649ffea40ccba02b89700d"
   },
   "pyth_feeder": {
     "package": "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302",
