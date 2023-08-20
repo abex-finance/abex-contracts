@@ -1,7 +1,7 @@
 [package]
 name = "abex-core"
 version = "1.0.0"
-published-at = "0xceab84acf6bf70f503c3b0627acaff6b3f84cee0f2d7ed53d00fa6c2a168d14f"
+published-at = "0x26dc4a835ed7de98f5db62691a06c663f474e842739a79ebe9e59d76232cf01d"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
@@ -15,4 +15,4 @@ local = "../vendor/pyth"
 std = "0x1"
 sui = "0x2"
 pyth = "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302"
-abex_core = "0x0"
+abex_core = "0xceab84acf6bf70f503c3b0627acaff6b3f84cee0f2d7ed53d00fa6c2a168d14f"

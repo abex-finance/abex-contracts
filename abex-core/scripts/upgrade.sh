@@ -23,10 +23,19 @@ echo "$upgrade_log"
 
 ok=`echo "$upgrade_log" | grep "Status : Success"`
 if [ -n "$ok" ]; then
-       package=`cat $deployments | jq -r ".abex_core.package"`
        # update abex_core to origin id
+       package=`cat $deployments | jq -r ".abex_core.package"`
        sed -i "s/\(abex_core\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$package\"/" ../Move.toml
        # update published-at to new id
-       published_at=`echo "${upgrade_log}" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"${published_at}\"/" ../Move.toml
+       new_package=`echo "${upgrade_log}" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"${new_package}\"/" ../Move.toml
+       # modify field ".abex_core.package" in $deployments
+       json_content=`jq ".abex_core.package = \"${new_package}\"" $deployments`
+
+       if [ -n "$json_content" ]; then
+              echo "$json_content" | jq . > $deployments
+              echo "Update $deployments finished!"
+       else
+              echo "Update $deployments failed!"
+       fi
 fi
