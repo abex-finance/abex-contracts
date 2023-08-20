@@ -1,6 +1,6 @@
 [package]
 name = "abex-core"
-version = "1.0.0"
+version = "1.0.1"
 published-at = "0x26dc4a835ed7de98f5db62691a06c663f474e842739a79ebe9e59d76232cf01d"
 
 [dependencies.Sui]
