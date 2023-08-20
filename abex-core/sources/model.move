@@ -4,6 +4,7 @@ module abex_core::model {
     use sui::object::{Self, ID, UID};
     use sui::tx_context::TxContext;
 
+    use abex_core::admin::AdminCap;
     use abex_core::rate::{Self, Rate};
     use abex_core::srate::{Self, SRate};
     use abex_core::decimal::{Self, Decimal};
@@ -116,5 +117,36 @@ module abex_core::model {
             !sdecimal::is_positive(&pnl_per_lp),
             seconds_rate,
         )
+    }
+
+    public entry fun update_rebase_fee_model(
+        _a: &AdminCap,
+        model: &mut RebaseFeeModel,
+        base: u128,
+        multiplier: u256,
+        _ctx: &mut TxContext,
+    ) {
+        model.base = rate::from_raw(base);
+        model.multiplier = decimal::from_raw(multiplier);
+    }
+
+    public entry fun update_reserving_fee_model(
+        _a: &AdminCap,
+        model: &mut ReservingFeeModel,
+        multiplier: u256,
+        _ctx: &mut TxContext,
+    ) {
+        model.multiplier = decimal::from_raw(multiplier);
+    }
+
+    public entry fun update_funding_fee_model(
+        _a: &AdminCap,
+        model: &mut FundingFeeModel,
+        multiplier: u256,
+        max: u128,
+        _ctx: &mut TxContext,
+    ) {
+        model.multiplier = decimal::from_raw(multiplier);
+        model.max = rate::from_raw(max);
     }
 }
