@@ -83,7 +83,6 @@ if [ -n "$ok" ]; then
        # modify field ".abex_core.orders_parent" in $deployments
        json_content=`echo "$json_content" | jq ".abex_core.orders_parent = \"$orders_parent\""`
 
-       json_content=`echo "$json_content" | jq ".abex_core.upgraded_packages = []"`
        # clear vaults
        json_content=`echo "$json_content" | jq ".abex_core.vaults = {}"`
        # clear symbols

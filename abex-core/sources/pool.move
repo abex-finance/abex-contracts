@@ -133,6 +133,18 @@ module abex_core::pool {
         liquidator_bonus_amount: u64,
     }
 
+    struct LiquidatePositionEventV1_1 has copy, drop {
+        liquidator: address,
+        collateral_price: Decimal,
+        index_price: Decimal,
+        position_size: Decimal,
+        reserving_fee_value: Decimal,
+        funding_fee_value: SDecimal,
+        delta_realised_pnl: SDecimal,
+        loss_amount: u64,
+        liquidator_bonus_amount: u64,
+    }
+
     // === Errors ===
 
     // vault errors
@@ -216,6 +228,10 @@ module abex_core::pool {
         }
     }
 
+    public(friend) fun mut_vault_price_config<C>(vault: &mut Vault<C>): &mut AggPriceConfig {
+        &mut vault.price_config
+    }
+
     public(friend) fun new_symbol(
         model_id: ID,
         price_config: AggPriceConfig,
@@ -236,12 +252,16 @@ module abex_core::pool {
         }
     }
 
-    public(friend) fun add_collateral_to_symbol<C>(config: &mut Symbol) {
-        vec_set::insert(&mut config.supported_collaterals, type_name::get<C>());
+    public(friend) fun mut_symbol_price_config(symbol: &mut Symbol): &mut AggPriceConfig {
+        &mut symbol.price_config
     }
 
-    public(friend) fun remove_collateral_from_symbol<C>(config: &mut Symbol) {
-        vec_set::remove(&mut config.supported_collaterals, &type_name::get<C>());
+    public(friend) fun add_collateral_to_symbol<C>(symbol: &mut Symbol) {
+        vec_set::insert(&mut symbol.supported_collaterals, type_name::get<C>());
+    }
+
+    public(friend) fun remove_collateral_from_symbol<C>(symbol: &mut Symbol) {
+        vec_set::remove(&mut symbol.supported_collaterals, &type_name::get<C>());
     }
 
     public(friend) fun deposit<C>(
@@ -815,7 +835,7 @@ module abex_core::pool {
         lp_supply_amount: Decimal,
         timestamp: u64,
         liquidator: address,
-    ): (Balance<C>, LiquidatePositionEvent) {
+    ): (Balance<C>, LiquidatePositionEventV1_1) {
         assert!(vault.enabled, ERR_VAULT_DISABLED);
         assert!(symbol.liquidate_enabled, ERR_LIQUIDATE_DISABLED);
         assert!(
@@ -887,10 +907,11 @@ module abex_core::pool {
         );
         symbol.realised_pnl = sdecimal::add(symbol.realised_pnl, delta_realised_pnl);
 
-        let event = LiquidatePositionEvent {
+        let event = LiquidatePositionEventV1_1 {
             liquidator,
             collateral_price: agg_price::price_of(collateral_price),
             index_price: agg_price::price_of(index_price),
+            position_size,
             reserving_fee_value,
             funding_fee_value,
             delta_realised_pnl,

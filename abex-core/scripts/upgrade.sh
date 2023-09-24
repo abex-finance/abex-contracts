@@ -29,8 +29,8 @@ if [ -n "$ok" ]; then
        # update published-at to new id
        new_package=`echo "${upgrade_log}" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"${new_package}\"/" ../Move.toml
-       # modify field ".abex_core.upgraded_packages" in $deployments
-       json_content=`jq ".abex_core.upgraded_packages += [\"${new_package}\"]" $deployments`
+       # modify field ".abex_core.package" in $deployments
+       json_content=`jq ".abex_core.package = \"${new_package}\"" $deployments`
 
        if [ -n "$json_content" ]; then
               echo "$json_content" | jq . > $deployments

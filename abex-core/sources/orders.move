@@ -32,12 +32,34 @@ module abex_core::orders {
         fee: Balance<F>,
     }
 
+    struct OpenPositionOrderV1_1<phantom C, phantom F> has store {
+        executed: bool,
+        created_at: u64,
+        open_amount: u64,
+        reserve_amount: u64,
+        limited_index_price: Decimal,
+        collateral_price_threshold: Decimal,
+        position_config: PositionConfig,
+        collateral: Balance<C>,
+        fee: Balance<F>,
+    }
+
     struct DecreasePositionOrder<phantom F> has store {
         executed: bool,
         created_at: u64,
         take_profit: bool,
         decrease_amount: u64,
         limited_index_price: AggPrice,
+        collateral_price_threshold: Decimal,
+        fee: Balance<F>,
+    }
+
+    struct DecreasePositionOrderV1_1<phantom F> has store {
+        executed: bool,
+        created_at: u64,
+        take_profit: bool,
+        decrease_amount: u64,
+        limited_index_price: Decimal,
         collateral_price_threshold: Decimal,
         fee: Balance<F>,
     }
@@ -66,22 +88,22 @@ module abex_core::orders {
         timestamp: u64,
         open_amount: u64,
         reserve_amount: u64,
-        limited_index_price: AggPrice,
+        limited_index_price: Decimal,
         collateral_price_threshold: Decimal,
         position_config: PositionConfig,
         collateral: Balance<C>,
         fee: Balance<F>,
-    ): (OpenPositionOrder<C, F>, CreateOpenPositionOrderEvent) {
+    ): (OpenPositionOrderV1_1<C, F>, CreateOpenPositionOrderEvent) {
         let event = CreateOpenPositionOrderEvent {
             open_amount,
             reserve_amount,
-            limited_index_price: agg_price::price_of(&limited_index_price),
+            limited_index_price,
             collateral_price_threshold,
             position_config,
             collateral_amount: balance::value(&collateral),
             fee_amount: balance::value(&fee),
         };
-        let order = OpenPositionOrder {
+        let order = OpenPositionOrderV1_1 {
             executed: false,
             created_at: timestamp,
             open_amount,
@@ -100,18 +122,18 @@ module abex_core::orders {
         timestamp: u64,
         take_profit: bool,
         decrease_amount: u64,
-        limited_index_price: AggPrice,
+        limited_index_price: Decimal,
         collateral_price_threshold: Decimal,
         fee: Balance<F>,
-    ): (DecreasePositionOrder<F>, CreateDecreasePositionOrderEvent) {
+    ): (DecreasePositionOrderV1_1<F>, CreateDecreasePositionOrderEvent) {
         let event = CreateDecreasePositionOrderEvent {
             take_profit,
             decrease_amount,
-            limited_index_price: agg_price::price_of(&limited_index_price),
+            limited_index_price,
             collateral_price_threshold,
             fee_amount: balance::value(&fee),
         };
-        let order = DecreasePositionOrder {
+        let order = DecreasePositionOrderV1_1 {
             executed: false,
             created_at: timestamp,
             take_profit,
@@ -125,7 +147,7 @@ module abex_core::orders {
     }
 
     public(friend) fun execute_open_position_order<C, F>(
-        order: &mut OpenPositionOrder<C, F>,
+        order: &mut OpenPositionOrderV1_1<C, F>,
         vault: &mut Vault<C>,
         symbol: &mut Symbol,
         reserving_fee_model: &ReservingFeeModel,
@@ -140,18 +162,12 @@ module abex_core::orders {
         assert!(!order.executed, ERR_ORDER_ALREADY_EXECUTED);
         if (long) {
             assert!(
-                decimal::le(
-                    &agg_price::price_of(index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
+                decimal::le(&agg_price::price_of(index_price), &order.limited_index_price),
                 ERR_INDEX_PRICE_NOT_TRIGGERED,
             );
         } else {
             assert!(
-                decimal::ge(
-                    &agg_price::price_of(index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
+                decimal::ge(&agg_price::price_of(index_price), &order.limited_index_price),
                 ERR_INDEX_PRICE_NOT_TRIGGERED,
             );
         };
@@ -162,6 +178,10 @@ module abex_core::orders {
         let fee = balance::withdraw_all(&mut order.fee);
 
         // open position in pool
+        let limited_index_price = agg_price::from_price(
+            pool::symbol_price_config(symbol),
+            order.limited_index_price,
+        );
         let (code, result, failure) = pool::open_position(
             vault,
             symbol,
@@ -169,7 +189,7 @@ module abex_core::orders {
             funding_fee_model,
             &order.position_config,
             collateral_price,
-            &order.limited_index_price,
+            &limited_index_price,
             &mut order.collateral,
             order.collateral_price_threshold,
             rebate_rate,
@@ -184,9 +204,9 @@ module abex_core::orders {
     }
 
     public(friend) fun destroy_open_position_order<C, F>(
-        order: OpenPositionOrder<C, F>,
+        order: OpenPositionOrderV1_1<C, F>,
     ): (Balance<C>, Balance<F>) {
-        let OpenPositionOrder {
+        let OpenPositionOrderV1_1 {
             executed: _,
             created_at: _,
             open_amount: _,
@@ -202,7 +222,7 @@ module abex_core::orders {
     }
 
     public(friend) fun execute_decrease_position_order<C, F>(
-        order: &mut DecreasePositionOrder<F>,
+        order: &mut DecreasePositionOrderV1_1<F>,
         vault: &mut Vault<C>,
         symbol: &mut Symbol,
         position: &mut Position<C>,
@@ -218,18 +238,12 @@ module abex_core::orders {
         assert!(!order.executed, ERR_ORDER_ALREADY_EXECUTED);
         if ((long && order.take_profit) || (!long && !order.take_profit)) {
             assert!(
-                decimal::ge(
-                    &agg_price::price_of(index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
+                decimal::ge(&agg_price::price_of(index_price), &order.limited_index_price),
                 ERR_INDEX_PRICE_NOT_TRIGGERED,
             );
         } else {
             assert!(
-                decimal::le(
-                    &agg_price::price_of(index_price),
-                    &agg_price::price_of(&order.limited_index_price),
-                ),
+                decimal::le(&agg_price::price_of(index_price), &order.limited_index_price),
                 ERR_INDEX_PRICE_NOT_TRIGGERED,
             );
         };
@@ -239,6 +253,10 @@ module abex_core::orders {
         // withdraw fee
         let fee = balance::withdraw_all(&mut order.fee);
         // decrease position in pool
+        let limited_index_price = agg_price::from_price(
+            pool::symbol_price_config(symbol),
+            order.limited_index_price,
+        );
         let (code, result, failure) = pool::decrease_position(
             vault,
             symbol,
@@ -246,7 +264,7 @@ module abex_core::orders {
             reserving_fee_model,
             funding_fee_model,
             collateral_price,
-            &order.limited_index_price,
+            &limited_index_price,
             order.collateral_price_threshold,
             rebate_rate,
             long,
@@ -257,11 +275,11 @@ module abex_core::orders {
 
         (code, result, failure, fee)
     }
-    
+
     public(friend) fun destroy_decrease_position_order<F>(
-        order: DecreasePositionOrder<F>,
+        order: DecreasePositionOrderV1_1<F>,
     ): Balance<F> {
-        let DecreasePositionOrder {
+        let DecreasePositionOrderV1_1 {
             executed: _,
             created_at: _,
             take_profit: _,
