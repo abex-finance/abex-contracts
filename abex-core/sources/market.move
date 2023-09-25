@@ -698,7 +698,7 @@ module abex_core::market {
             position_id,
         };
         let order: OpenPositionOrderV1_1<C, F> = bag::remove(&mut market.orders, order_name);
-        let (collateral, fee) = orders::destroy_open_position_order(order);
+        let (collateral, fee) = orders::destroy_open_position_order_v1_1(order);
 
         object::delete(id);
 
@@ -727,7 +727,7 @@ module abex_core::market {
             position_id,
         };
         let order: DecreasePositionOrderV1_1<F> = bag::remove(&mut market.orders, order_name);
-        let fee = orders::destroy_decrease_position_order(order);
+        let fee = orders::destroy_decrease_position_order_v1_1(order);
 
         object::delete(id);
 
@@ -987,9 +987,9 @@ module abex_core::market {
         assert!(false, ERR_FUNCTION_DEPREACATED);
     }
 
-    // === v_1_1 functions ===
+    // === v1_1 functions ===
 
-    public entry fun add_new_vault_v_1_1<L, C>(
+    public entry fun add_new_vault_v1_1<L, C>(
         _a: &AdminCap,
         market: &mut Market<L>,
         weight: u256,
@@ -1009,7 +1009,7 @@ module abex_core::market {
         let vault = pool::new_vault<C>(
             weight,
             model_id,
-            agg_price::new_agg_price_config(
+            agg_price::new_agg_price_config_v1_1(
                 max_interval,
                 max_price_confidence,
                 coin_metadata,
@@ -1022,7 +1022,7 @@ module abex_core::market {
         event::emit(VaultCreated<C> {});
     }
 
-    public entry fun add_new_symbol_v_1_1<L, I, D>(
+    public entry fun add_new_symbol_v1_1<L, I, D>(
         _a: &AdminCap,
         market: &mut Market<L>,
         max_interval: u64,
@@ -1068,7 +1068,7 @@ module abex_core::market {
 
         let symbol = pool::new_symbol(
             model_id,
-            agg_price::new_agg_price_config(
+            agg_price::new_agg_price_config_v1_1(
                 max_interval,
                 max_price_confidence,
                 coin_metadata,
@@ -1082,7 +1082,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 19
-    public entry fun open_position_v_1_1<L, C, I, D, F>(
+    public entry fun open_position_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
@@ -1113,7 +1113,7 @@ module abex_core::market {
         );
 
         let collateral_price_threshold = decimal::from_raw(collateral_price_threshold);
-        let index_price = agg_price::parse_pyth_feeder_v1(
+        let index_price = agg_price::parse_pyth_feeder_v1_1(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
@@ -1136,7 +1136,7 @@ module abex_core::market {
                 owner,
                 position_id: option::none(),
             };
-            let (order, event) = orders::new_open_position_order(
+            let (order, event) = orders::new_open_position_order_v1_1(
                 timestamp,
                 open_amount,
                 reserve_amount,
@@ -1167,7 +1167,7 @@ module abex_core::market {
                 VaultName<C> {},
             );
 
-            let collateral_price = agg_price::parse_pyth_feeder_v1(
+            let collateral_price = agg_price::parse_pyth_feeder_v1_1(
                 pool::vault_price_config(vault),
                 collateral_feeder,
                 timestamp,
@@ -1224,7 +1224,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 20
-    public entry fun decrease_position_v_1_1<L, C, I, D, F>(
+    public entry fun decrease_position_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
         position_cap: &mut PositionCap<C, I, D>,
@@ -1259,7 +1259,7 @@ module abex_core::market {
         };
 
         let collateral_price_threshold = decimal::from_raw(collateral_price_threshold);
-        let index_price = agg_price::parse_pyth_feeder_v1(
+        let index_price = agg_price::parse_pyth_feeder_v1_1(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
@@ -1285,7 +1285,7 @@ module abex_core::market {
                 owner,
                 position_id: option::some(position_name.id),
             };
-            let (order, event) = orders::new_decrease_position_order(
+            let (order, event) = orders::new_decrease_position_order_v1_1(
                 timestamp,
                 take_profit,
                 decrease_amount,
@@ -1318,7 +1318,7 @@ module abex_core::market {
                 position_name,
             );
 
-            let collateral_price = agg_price::parse_pyth_feeder_v1(
+            let collateral_price = agg_price::parse_pyth_feeder_v1_1(
                 pool::vault_price_config(vault),
                 collateral_feeder,
                 timestamp,
@@ -1360,7 +1360,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 21
-    public entry fun redeem_from_position_v_1_1<L, C, I, D>(
+    public entry fun redeem_from_position_v1_1<L, C, I, D>(
         clock: &Clock,
         market: &mut Market<L>,
         position_cap: &PositionCap<C, I, D>,
@@ -1397,12 +1397,12 @@ module abex_core::market {
             position_name,
         );
 
-        let collateral_price = agg_price::parse_pyth_feeder_v1(
+        let collateral_price = agg_price::parse_pyth_feeder_v1_1(
             pool::vault_price_config(vault),
             collateral_feeder,
             timestamp,
         );
-        let index_price = agg_price::parse_pyth_feeder_v1(
+        let index_price = agg_price::parse_pyth_feeder_v1_1(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
@@ -1432,7 +1432,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 22
-    public entry fun liquidate_position_v_1_1<L, C, I, D>(
+    public entry fun liquidate_position_v1_1<L, C, I, D>(
         clock: &Clock,
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
@@ -1469,18 +1469,18 @@ module abex_core::market {
             position_name,
         );
 
-        let collateral_price = agg_price::parse_pyth_feeder_v1(
+        let collateral_price = agg_price::parse_pyth_feeder_v1_1(
             pool::vault_price_config(vault),
             collateral_feeder,
             timestamp,
         );
-        let index_price = agg_price::parse_pyth_feeder_v1(
+        let index_price = agg_price::parse_pyth_feeder_v1_1(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
         );
 
-        let (liquidation_fee, event) = pool::liquidate_position(
+        let (liquidation_fee, event) = pool::liquidate_position_v1_1(
             vault,
             symbol,
             position,
@@ -1504,7 +1504,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 23
-    public entry fun execute_open_position_order_v_1_1<L, C, I, D, F>(
+    public entry fun execute_open_position_order_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
@@ -1542,19 +1542,19 @@ module abex_core::market {
             SymbolName<I, D> {},
         );
 
-        let collateral_price = agg_price::parse_pyth_feeder_v1(
+        let collateral_price = agg_price::parse_pyth_feeder_v1_1(
             pool::vault_price_config(vault),
             collateral_feeder,
             timestamp,
         );
-        let index_price = agg_price::parse_pyth_feeder_v1(
+        let index_price = agg_price::parse_pyth_feeder_v1_1(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
         );
 
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
-        let (code, result, failure, fee) = orders::execute_open_position_order(
+        let (code, result, failure, fee) = orders::execute_open_position_order_v1_1(
             order,
             vault,
             symbol,
@@ -1615,7 +1615,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 24
-    public entry fun execute_decrease_position_order_v_1_1<L, C, I, D, F>(
+    public entry fun execute_decrease_position_order_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
         reserving_fee_model: &ReservingFeeModel,
@@ -1662,19 +1662,19 @@ module abex_core::market {
             position_name,
         );
 
-        let collateral_price = agg_price::parse_pyth_feeder_v1(
+        let collateral_price = agg_price::parse_pyth_feeder_v1_1(
             pool::vault_price_config(vault),
             collateral_feeder,
             timestamp,
         );
-        let index_price = agg_price::parse_pyth_feeder_v1(
+        let index_price = agg_price::parse_pyth_feeder_v1_1(
             pool::symbol_price_config(symbol),
             index_feeder,
             timestamp,
         );
 
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
-        let (code, result, failure, fee) = orders::execute_decrease_position_order(
+        let (code, result, failure, fee) = orders::execute_decrease_position_order_v1_1(
             order,
             vault,
             symbol,
@@ -1724,7 +1724,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 25
-    public fun valuate_vault_v_1_1<L, C>(
+    public fun valuate_vault_v1_1<L, C>(
         market: &mut Market<L>,
         model: &ReservingFeeModel,
         feeder: &PythFeederV1,
@@ -1740,7 +1740,7 @@ module abex_core::market {
             ERR_VAULT_ALREADY_HANDLED,
         );
 
-        let price = agg_price::parse_pyth_feeder_v1(
+        let price = agg_price::parse_pyth_feeder_v1_1(
             pool::vault_price_config(vault),
             feeder,
             timestamp,
@@ -1761,7 +1761,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 26
-    public fun valuate_symbol_v_1_1<L, I, D>(
+    public fun valuate_symbol_v1_1<L, I, D>(
         market: &mut Market<L>,
         funding_fee_model: &FundingFeeModel,
         feeder: &PythFeederV1,
@@ -1779,7 +1779,7 @@ module abex_core::market {
             ERR_SYMBOL_ALREADY_HANDLED,
         );
 
-        let price = agg_price::parse_pyth_feeder_v1(
+        let price = agg_price::parse_pyth_feeder_v1_1(
             pool::symbol_price_config(symbol),
             feeder,
             timestamp,

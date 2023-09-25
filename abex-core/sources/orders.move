@@ -1,6 +1,6 @@
 
 module abex_core::orders {
-    use std::option::Option;
+    use std::option::{Self, Option};
 
     use sui::balance::{Self, Balance};
     
@@ -19,7 +19,10 @@ module abex_core::orders {
 
     const ERR_ORDER_ALREADY_EXECUTED: u64 = 1;
     const ERR_INDEX_PRICE_NOT_TRIGGERED: u64 = 2;
+    // special errors
+    const ERR_FUNCTION_DEPREACATED: u64 = 3;
 
+    // !!! Deprecated
     struct OpenPositionOrder<phantom C, phantom F> has store {
         executed: bool,
         created_at: u64,
@@ -44,6 +47,7 @@ module abex_core::orders {
         fee: Balance<F>,
     }
 
+    // !!! Deprecated
     struct DecreasePositionOrder<phantom F> has store {
         executed: bool,
         created_at: u64,
@@ -84,7 +88,43 @@ module abex_core::orders {
         fee_amount: u64,
     }
 
+    // !!! Deprecated
     public(friend) fun new_open_position_order<C, F>(
+        timestamp: u64,
+        open_amount: u64,
+        reserve_amount: u64,
+        limited_index_price: AggPrice,
+        collateral_price_threshold: Decimal,
+        position_config: PositionConfig,
+        collateral: Balance<C>,
+        fee: Balance<F>,
+    ): (OpenPositionOrder<C, F>, CreateOpenPositionOrderEvent) {
+        assert!(false, ERR_FUNCTION_DEPREACATED);
+        let event = CreateOpenPositionOrderEvent {
+            open_amount,
+            reserve_amount,
+            limited_index_price: agg_price::price_of(&limited_index_price),
+            collateral_price_threshold,
+            position_config,
+            collateral_amount: balance::value(&collateral),
+            fee_amount: balance::value(&fee),
+        };
+        let order = OpenPositionOrder {
+            executed: false,
+            created_at: timestamp,
+            open_amount,
+            reserve_amount,
+            limited_index_price,
+            collateral_price_threshold,
+            position_config,
+            collateral,
+            fee,
+        };
+
+        (order, event)
+    }
+
+    public(friend) fun new_open_position_order_v1_1<C, F>(
         timestamp: u64,
         open_amount: u64,
         reserve_amount: u64,
@@ -118,7 +158,37 @@ module abex_core::orders {
         (order, event)
     }
 
+    // !!! Deprecated
     public(friend) fun new_decrease_position_order<F>(
+        timestamp: u64,
+        take_profit: bool,
+        decrease_amount: u64,
+        limited_index_price: AggPrice,
+        collateral_price_threshold: Decimal,
+        fee: Balance<F>,
+    ): (DecreasePositionOrder<F>, CreateDecreasePositionOrderEvent) {
+        assert!(false, ERR_FUNCTION_DEPREACATED);
+        let event = CreateDecreasePositionOrderEvent {
+            take_profit,
+            decrease_amount,
+            limited_index_price: agg_price::price_of(&limited_index_price),
+            collateral_price_threshold,
+            fee_amount: balance::value(&fee),
+        };
+        let order = DecreasePositionOrder {
+            executed: false,
+            created_at: timestamp,
+            take_profit,
+            decrease_amount,
+            limited_index_price,
+            collateral_price_threshold,
+            fee,
+        };
+
+        (order, event)
+    }
+
+    public(friend) fun new_decrease_position_order_v1_1<F>(
         timestamp: u64,
         take_profit: bool,
         decrease_amount: u64,
@@ -146,7 +216,26 @@ module abex_core::orders {
         (order, event)
     }
 
+    // !!! Deprecated
     public(friend) fun execute_open_position_order<C, F>(
+        _order: &mut OpenPositionOrder<C, F>,
+        _vault: &mut Vault<C>,
+        _symbol: &mut Symbol,
+        _reserving_fee_model: &ReservingFeeModel,
+        _funding_fee_model: &FundingFeeModel,
+        _collateral_price: &AggPrice,
+        _index_price: &AggPrice,
+        _rebate_rate: Rate,
+        _long: bool,
+        _lp_supply_amount: Decimal,
+        _timestamp: u64,
+    ): (u64, Option<OpenPositionResult<C>>, Option<OpenPositionFailedEvent>, Balance<F>) {
+        assert!(false, ERR_FUNCTION_DEPREACATED);
+
+        (0, option::none(), option::none(), balance::zero())
+    }
+
+    public(friend) fun execute_open_position_order_v1_1<C, F>(
         order: &mut OpenPositionOrderV1_1<C, F>,
         vault: &mut Vault<C>,
         symbol: &mut Symbol,
@@ -203,7 +292,27 @@ module abex_core::orders {
         (code, result, failure, fee)
     }
 
+    // !!! Deprecated
     public(friend) fun destroy_open_position_order<C, F>(
+        order: OpenPositionOrder<C, F>,
+    ): (Balance<C>, Balance<F>) {
+        assert!(false, ERR_FUNCTION_DEPREACATED);
+        let OpenPositionOrder {
+            executed: _,
+            created_at: _,
+            open_amount: _,
+            reserve_amount: _,
+            limited_index_price: _,
+            collateral_price_threshold: _,
+            position_config: _,
+            collateral,
+            fee,
+        } = order;
+
+        (collateral, fee)
+    }
+
+    public(friend) fun destroy_open_position_order_v1_1<C, F>(
         order: OpenPositionOrderV1_1<C, F>,
     ): (Balance<C>, Balance<F>) {
         let OpenPositionOrderV1_1 {
@@ -221,7 +330,27 @@ module abex_core::orders {
         (collateral, fee)
     }
 
+    // !!! Deprecated
     public(friend) fun execute_decrease_position_order<C, F>(
+        _order: &mut DecreasePositionOrder<F>,
+        _vault: &mut Vault<C>,
+        _symbol: &mut Symbol,
+        _position: &mut Position<C>,
+        _reserving_fee_model: &ReservingFeeModel,
+        _funding_fee_model: &FundingFeeModel,
+        _collateral_price: &AggPrice,
+        _index_price: &AggPrice,
+        _rebate_rate: Rate,
+        _long: bool,
+        _lp_supply_amount: Decimal,
+        _timestamp: u64,
+    ): (u64, Option<DecreasePositionResult<C>>, Option<DecreasePositionFailedEvent>, Balance<F>) {
+        assert!(false, ERR_FUNCTION_DEPREACATED);
+
+        (0, option::none(), option::none(), balance::zero())
+    }
+
+    public(friend) fun execute_decrease_position_order_v1_1<C, F>(
         order: &mut DecreasePositionOrderV1_1<F>,
         vault: &mut Vault<C>,
         symbol: &mut Symbol,
@@ -276,7 +405,25 @@ module abex_core::orders {
         (code, result, failure, fee)
     }
 
+    // !!! Deprecated
     public(friend) fun destroy_decrease_position_order<F>(
+        order: DecreasePositionOrder<F>,
+    ): Balance<F> {
+        assert!(false, ERR_FUNCTION_DEPREACATED);
+        let DecreasePositionOrder {
+            executed: _,
+            created_at: _,
+            take_profit: _,
+            decrease_amount: _,
+            limited_index_price: _,
+            collateral_price_threshold: _,
+            fee,
+        } = order;
+
+        fee
+    }
+
+    public(friend) fun destroy_decrease_position_order_v1_1<F>(
         order: DecreasePositionOrderV1_1<F>,
     ): Balance<F> {
         let DecreasePositionOrderV1_1 {

@@ -39,6 +39,20 @@ module abex_core::agg_price {
         max_interval: u64,
         max_confidence: u64,
         coin_metadata: &CoinMetadata<T>,
+        feeder: &PythFeeder,
+    ): AggPriceConfig {
+        AggPriceConfig {
+            max_interval,
+            max_confidence,
+            precision: pow(10, coin::get_decimals(coin_metadata)),
+            feeder: object::id(feeder),
+        }
+    }
+
+    public(friend) fun new_agg_price_config_v1_1<T>(
+        max_interval: u64,
+        max_confidence: u64,
+        coin_metadata: &CoinMetadata<T>,
         feeder: &PythFeederV1,
     ): AggPriceConfig {
         AggPriceConfig {
@@ -95,7 +109,7 @@ module abex_core::agg_price {
         AggPrice { price, precision: config.precision}
     }
 
-    public fun parse_pyth_feeder_v1(
+    public fun parse_pyth_feeder_v1_1(
         config: &AggPriceConfig,
         feeder: &PythFeederV1,
         timestamp: u64,

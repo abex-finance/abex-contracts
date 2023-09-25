@@ -122,6 +122,7 @@ module abex_core::pool {
         redeem_amount: u64,
     }
 
+    // !!! Deprecated
     struct LiquidatePositionEvent has copy, drop {
         liquidator: address,
         collateral_price: Decimal,
@@ -165,6 +166,8 @@ module abex_core::pool {
     // model errors
     const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 13;
     const ERR_MISMATCHED_FUNDING_FEE_MODEL: u64 = 14;
+    // speicial errors
+    const ERR_FUNCTION_DEPREACATED: u64 = 15;
 
     fun truncate_decimal(value: Decimal): u64 {
         // decimal's precision is 18, we need to truncate it to 6
@@ -823,7 +826,36 @@ module abex_core::pool {
         (redeem, event)
     }
 
+    // !!! Deprecated
     public(friend) fun liquidate_position<C>(
+        _vault: &mut Vault<C>,
+        _symbol: &mut Symbol,
+        _position: &mut Position<C>,
+        _reserving_fee_model: &ReservingFeeModel,
+        _funding_fee_model: &FundingFeeModel,
+        _collateral_price: &AggPrice,
+        _index_price: &AggPrice,
+        _long: bool,
+        _lp_supply_amount: Decimal,
+        _timestamp: u64,
+        _liquidator: address,
+    ): (Balance<C>, LiquidatePositionEvent) {
+        assert!(false, ERR_FUNCTION_DEPREACATED);
+        let event = LiquidatePositionEvent {
+            liquidator: @0x0,
+            collateral_price: decimal::zero(),
+            index_price: decimal::zero(),
+            reserving_fee_value: decimal::zero(),
+            funding_fee_value: sdecimal::zero(),
+            delta_realised_pnl: sdecimal::zero(),
+            loss_amount: 0,
+            liquidator_bonus_amount: 0,
+        };
+
+        (balance::zero(), event)
+    }
+
+    public(friend) fun liquidate_position_v1_1<C>(
         vault: &mut Vault<C>,
         symbol: &mut Symbol,
         position: &mut Position<C>,
