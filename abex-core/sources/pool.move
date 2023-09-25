@@ -122,7 +122,6 @@ module abex_core::pool {
         redeem_amount: u64,
     }
 
-    // !!! Deprecated
     struct LiquidatePositionEvent has copy, drop {
         liquidator: address,
         collateral_price: Decimal,
@@ -166,8 +165,6 @@ module abex_core::pool {
     // model errors
     const ERR_MISMATCHED_RESERVING_FEE_MODEL: u64 = 13;
     const ERR_MISMATCHED_FUNDING_FEE_MODEL: u64 = 14;
-    // speicial errors
-    const ERR_FUNCTION_DEPREACATED: u64 = 15;
 
     fun truncate_decimal(value: Decimal): u64 {
         // decimal's precision is 18, we need to truncate it to 6
@@ -826,33 +823,102 @@ module abex_core::pool {
         (redeem, event)
     }
 
-    // !!! Deprecated
     public(friend) fun liquidate_position<C>(
-        _vault: &mut Vault<C>,
-        _symbol: &mut Symbol,
-        _position: &mut Position<C>,
-        _reserving_fee_model: &ReservingFeeModel,
-        _funding_fee_model: &FundingFeeModel,
-        _collateral_price: &AggPrice,
-        _index_price: &AggPrice,
-        _long: bool,
-        _lp_supply_amount: Decimal,
-        _timestamp: u64,
-        _liquidator: address,
+        vault: &mut Vault<C>,
+        symbol: &mut Symbol,
+        position: &mut Position<C>,
+        reserving_fee_model: &ReservingFeeModel,
+        funding_fee_model: &FundingFeeModel,
+        collateral_price: &AggPrice,
+        index_price: &AggPrice,
+        long: bool,
+        lp_supply_amount: Decimal,
+        timestamp: u64,
+        liquidator: address,
     ): (Balance<C>, LiquidatePositionEvent) {
-        assert!(false, ERR_FUNCTION_DEPREACATED);
+        assert!(vault.enabled, ERR_VAULT_DISABLED);
+        assert!(symbol.liquidate_enabled, ERR_LIQUIDATE_DISABLED);
+        assert!(
+            object::id(reserving_fee_model) == vault.reserving_fee_model,
+            ERR_MISMATCHED_RESERVING_FEE_MODEL,
+        );
+        assert!(
+            object::id(funding_fee_model) == symbol.funding_fee_model,
+            ERR_MISMATCHED_FUNDING_FEE_MODEL,
+        );
+
+        // refresh vault
+        refresh_vault(vault, reserving_fee_model, timestamp);
+        // refresh symbol
+        let delta_size = symbol_delta_size(symbol, index_price, long);
+        refresh_symbol(
+            symbol,
+            funding_fee_model,
+            delta_size,
+            lp_supply_amount,
+            timestamp,
+        );
+
+        let (
+            liquidator_bonus_amount,
+            trader_loss_amount,
+            position_amount,
+            reserved_amount,
+            position_size,
+            reserving_fee_amount,
+            reserving_fee_value,
+            funding_fee_value,
+            to_vault,
+            to_liquidator,
+        ) = position::liquidate_position(
+            position,
+            collateral_price,
+            index_price,
+            long,
+            vault.acc_reserving_rate,
+            symbol.acc_funding_rate,
+        );
+
+        // update vault
+        vault.reserved_amount = vault.reserved_amount - reserved_amount;
+        vault.unrealised_reserving_fee_amount = decimal::sub(
+            vault.unrealised_reserving_fee_amount,
+            reserving_fee_amount,
+        );
+        let _ = balance::join(&mut vault.liquidity, to_vault);
+
+        // update symbol
+        symbol.opening_size = decimal::sub(symbol.opening_size, position_size);
+        symbol.opening_amount = symbol.opening_amount - position_amount;
+        symbol.unrealised_funding_fee_value = sdecimal::sub(
+            symbol.unrealised_funding_fee_value,
+            funding_fee_value,
+        );
+        let delta_realised_pnl = sdecimal::sub_with_decimal(
+            sdecimal::from_decimal(
+                true,
+                agg_price::coins_to_value(
+                    collateral_price,
+                    trader_loss_amount,
+                ),
+            ),
+            // exclude reserving fee
+            reserving_fee_value,
+        );
+        symbol.realised_pnl = sdecimal::add(symbol.realised_pnl, delta_realised_pnl);
+
         let event = LiquidatePositionEvent {
-            liquidator: @0x0,
-            collateral_price: decimal::zero(),
-            index_price: decimal::zero(),
-            reserving_fee_value: decimal::zero(),
-            funding_fee_value: sdecimal::zero(),
-            delta_realised_pnl: sdecimal::zero(),
-            loss_amount: 0,
-            liquidator_bonus_amount: 0,
+            liquidator,
+            collateral_price: agg_price::price_of(collateral_price),
+            index_price: agg_price::price_of(index_price),
+            reserving_fee_value,
+            funding_fee_value,
+            delta_realised_pnl,
+            loss_amount: trader_loss_amount,
+            liquidator_bonus_amount,
         };
 
-        (balance::zero(), event)
+        (to_liquidator, event)
     }
 
     public(friend) fun liquidate_position_v1_1<C>(
