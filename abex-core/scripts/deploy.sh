@@ -34,8 +34,6 @@ if [ -n "$ok" ]; then
        ### grep from object changes
 
        package=`echo "$deploy_log" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field "abex_core" to $package in Move.toml
-       sed -i "s/\(abex_core\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$package\"/" ../Move.toml
        # modify field "published-at" to $package in Move.toml
        sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$package\"/" ../Move.toml
        # modify field ".abex_core.package" in $deployments

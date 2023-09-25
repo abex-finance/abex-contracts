@@ -23,11 +23,8 @@ echo "$upgrade_log"
 
 ok=`echo "$upgrade_log" | grep "Status : Success"`
 if [ -n "$ok" ]; then
-       # update abex_core to origin id
-       package=`cat $deployments | jq -r ".abex_core.package"`
-       sed -i "s/\(abex_core\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$package\"/" ../Move.toml
-       # update published-at to new id
        new_package=`echo "${upgrade_log}" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # update published-at to new id
        sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"${new_package}\"/" ../Move.toml
        # modify field ".abex_core.package" in $deployments
        json_content=`jq ".abex_core.package = \"${new_package}\"" $deployments`
