@@ -2,6 +2,7 @@
 
 read -p "Import the env name (default: mainnet): " env_name
 read -p "Import gas budget (default: 1000000000): " gas_budget
+read -p "Import the upgrade version: " version
 
 if [ -z "$gas_budget" ]; then
        gas_budget=1000000000
@@ -26,8 +27,8 @@ if [ -n "$ok" ]; then
        new_package=`echo "${upgrade_log}" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # update published-at to new id
        sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"${new_package}\"/" ../Move.toml
-       # modify field ".abex_core.package" in $deployments
-       json_content=`jq ".abex_core.package = \"${new_package}\"" $deployments`
+       # modify field ".abex_core.package_$version" in $deployments
+       json_content=`jq ".abex_core.package_$version = \"${new_package}\"" $deployments`
 
        if [ -n "$json_content" ]; then
               echo "$json_content" | jq . > $deployments
