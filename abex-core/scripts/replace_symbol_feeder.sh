@@ -30,8 +30,7 @@ replace_log=`sui client --client.config $config \
               --package ${package_v1_1} \
               --module market \
               --function replace_symbol_feeder \
-              --type-args $package::alp::ALP ${coin_module} $direction \
-              --args ${admin_cap} \
-                     $market 
-                     ${pyth_feeder}`
+              --type-args $package::alp::ALP ${coin_module} $package::market::$direction \
+              --args ${admin_cap} $market ${pyth_feeder}`
 echo "${replace_log}"
+

@@ -27,7 +27,6 @@ replace_log=`sui client --client.config $config \
               --module market \
               --function replace_vault_feeder \
               --type-args $package::alp::ALP ${coin_module} \
-              --args ${admin_cap} \
-                     $market 
-                     ${pyth_feeder}`
+              --args ${admin_cap} $market ${pyth_feeder}`
 echo "${replace_log}"
+
