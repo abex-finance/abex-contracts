@@ -102,9 +102,21 @@ module abex_core::market {
         id: ID,
         owner: address,
     }
-    /// `Order` is a tag struct to indicate the open position order with collateral coin type,
+    /// `OrderName` is a tag struct to indicate the open position order with collateral coin type,
     /// index coin type, direction, fee coin type, order id, owner and position id.
     struct OrderName<
+        phantom C,
+        phantom I,
+        phantom D,
+        phantom F,
+    > has copy, drop, store {
+        id: ID,
+        owner: address,
+        position_id: Option<ID>,
+    }
+    /// `OrderNameV1_1` is a tag struct to indicate the open position order with collateral coin type,
+    /// index coin type, direction, fee coin type, order id, owner and position id.
+    struct OrderNameV1_1<
         phantom C,
         phantom I,
         phantom D,
@@ -1786,7 +1798,7 @@ module abex_core::market {
             assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
             let order_id = object::new(ctx);
-            let order_name = OrderName<C, I, D, F> {
+            let order_name = OrderNameV1_1<C, I, D, F> {
                 id: object::uid_to_inner(&order_id),
                 owner,
                 position_id: option::none(),
@@ -1935,7 +1947,7 @@ module abex_core::market {
             assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
             let order_id = object::new(ctx);
-            let order_name = OrderName<C, I, D, F> {
+            let order_name = OrderNameV1_1<C, I, D, F> {
                 id: object::uid_to_inner(&order_id),
                 owner,
                 position_id: option::some(position_name.id),
@@ -2178,7 +2190,7 @@ module abex_core::market {
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
 
-        let order_name = OrderName<C, I, D, F> {
+        let order_name = OrderNameV1_1<C, I, D, F> {
             id: object::id_from_address(order_id),
             owner,
             position_id: option::none(),
@@ -2294,7 +2306,7 @@ module abex_core::market {
             id: object::id_from_address(position_id),
             owner,
         };
-        let order_name = OrderName<C, I, D, F> {
+        let order_name = OrderNameV1_1<C, I, D, F> {
             id: object::id_from_address(order_id),
             owner,
             position_id: option::some(position_name.id),
@@ -2390,7 +2402,7 @@ module abex_core::market {
 
         let OrderCap { id, position_id } = order_cap;
 
-        let order_name = OrderName<C, I, D, F> {
+        let order_name = OrderNameV1_1<C, I, D, F> {
             id: object::uid_to_inner(&id),
             owner,
             position_id,
@@ -2419,7 +2431,7 @@ module abex_core::market {
 
         let OrderCap { id, position_id } = order_cap;
 
-        let order_name = OrderName<C, I, D, F> {
+        let order_name = OrderNameV1_1<C, I, D, F> {
             id: object::uid_to_inner(&id),
             owner,
             position_id,
