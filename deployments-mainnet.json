@@ -204,6 +204,24 @@
         ],
         "funding_fee_model": "0xec7ae38984b89805912c9bc1cb90e9a86bcfe0978e8c1b1f8de048593d7907e0",
         "position_config": "0xb18548c1d3d90b30ed911a65de363e141f821733de5b2da019b028038c20c688"
+      },
+      "long_cetus": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x37dfbf87e1606022cdd4ad62a30154a89ab4f6c9f1785cbcf89199b2597d3a2b",
+        "position_config": "0x3ca8732c9d8080ab2249c7d05bd37bb3aa3d870ebffe6af7f858e2be1233e224"
+      },
+      "short_cetus": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x658015a4084d32bd0a3159b418d351d76bf6af6437d547e1b67eca143c7770e4",
+        "position_config": "0xd30ed143fb0275714c0634ddf764cd5a482713ae27aff7b9eb19a9a979967d59"
       }
     },
     "referrals_parent": "0xbf981cf3f532dc8e4f236554ba4dd6e0e3c4844b5cf877f9012a932c3d0bf639",
