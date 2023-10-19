@@ -228,7 +228,8 @@
       "sol": "0x9d0d275efbd37d8a8855f6f2c761fa5983293dd8ce202ee5196626de8fcd4469",
       "ltc": "0x38bff6edbebb69ebf0c00c085789608986acdcf78186766cce10f0aae18bb465",
       "dot": "0xba8f9877ba48278e291c7648e42d1d5e98899e215c205aa43bd3c104677ad90c",
-      "avax": "0x29e37978cb1c9501bda5d7c105f24f0058bc1668637e307fbc290dba48cb918d"
+      "avax": "0x29e37978cb1c9501bda5d7c105f24f0058bc1668637e307fbc290dba48cb918d",
+      "cetus": "0x24c0247fb22457a719efac7f670cdc79be321b521460bd6bd2ccfa9f80713b14"
     }
   },
   "coins": {
@@ -291,6 +292,11 @@
       "decimals": 8,
       "module": "0xcb9d2191108ddc53c6677bbf4c5fcf68eeb76110735cbecb3784864829f1de29::ltc::LTC",
       "metadata": "0xceed84ccd22ec1e69320bbbc8660cae6d7dfd48e235eeb6628fd8b9a5f7a9b74"
+    },
+    "cetus": {
+      "decimals": 9,
+      "module": "0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS",
+      "metadata": "0x4c0dce55eff2db5419bbd2d239d1aa22b4a400c01bbb648b058a9883989025da"
     }
   }
 }
