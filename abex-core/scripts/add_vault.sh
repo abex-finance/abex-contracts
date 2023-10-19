@@ -31,6 +31,7 @@ if [ -z "${param_multiplier}" ]; then
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
+package_v1_1=`cat $deployments | jq -r ".abex_core.package_v1_1"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 market=`cat $deployments | jq -r ".abex_core.market"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
@@ -40,9 +41,9 @@ pyth_feeder=`cat $deployments | jq -r ".pyth_feeder.feeder.$coin"`
 # add new vault
 add_log=`sui client --client.config $config \
        call --gas-budget $gas_budget \
-              --package $package \
+              --package ${package_v1_1} \
               --module market \
-              --function add_new_vault \
+              --function add_new_vault_v1_1 \
               --type-args $package::alp::ALP ${coin_module} \
               --args ${admin_cap} \
                      $market \
@@ -56,7 +57,7 @@ echo "$add_log"
 
 ok=`echo "$add_log" | grep "Status : Success"`
 if [ -n "$ok" ]; then
-       fee_model=`echo "${add_log}" | grep "$package::model::ReservingFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       fee_model=`echo "$add_log" | grep "$package::model::ReservingFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
 
        json_content=`jq ".abex_core.vaults.$coin.weight = \"$weight\"" $deployments`
        json_content=`echo "$json_content" | jq ".abex_core.vaults.$coin.reserving_fee_model = \"${fee_model}\""`

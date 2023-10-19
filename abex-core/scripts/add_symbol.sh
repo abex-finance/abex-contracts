@@ -68,6 +68,7 @@ if [ -z "${liq_bonus}" ]; then
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
+package_v1_1=`cat $deployments | jq -r ".abex_core.package_v1_1"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 market=`cat $deployments | jq -r ".abex_core.market"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
@@ -77,9 +78,9 @@ pyth_feeder=`cat $deployments | jq -r ".pyth_feeder.feeder.$coin"`
 # add new symbol
 add_log=`sui client --client.config $config \
        call --gas-budget $gas_budget \
-              --package $package \
+              --package ${package_v1_1} \
               --module market \
-              --function add_new_symbol \
+              --function add_new_symbol_v1_1 \
               --type-args $package::alp::ALP ${coin_module} $package::market::$direction \
               --args ${admin_cap} \
                      $market \
@@ -97,9 +98,9 @@ add_log=`sui client --client.config $config \
                      ${decrease_fee_bps} \
                      ${liq_threshold} \
                      ${liq_bonus}`
-echo "$add_log"
+echo "${add_log}"
 
-ok=`echo "$add_log" | grep "Status : Success"`
+ok=`echo "${add_log}" | grep "Status : Success"`
 if [ -n "$ok" ]; then
        fee_model=`echo "${add_log}" | grep "$package::model::FundingFeeModel" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        position_config=`echo "${add_log}" | grep "$package::market::WrappedPositionConfig" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
@@ -117,6 +118,8 @@ if [ -n "$ok" ]; then
        else
               echo "Update $deployments failed!"
        fi
+else
+       exit 1
 fi
 
 for c_coin in ${c_coins[*]}; do
