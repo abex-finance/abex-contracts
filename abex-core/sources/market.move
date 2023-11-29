@@ -222,6 +222,7 @@ module abex_core::market {
 
     // === Internal functions ===
 
+    #[lint_allow(self_transfer)]
     fun pay_from_balance<T>(
         balance: Balance<T>,
         receiver: address,
@@ -551,6 +552,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 1
+    #[lint_allow(self_transfer)]
     public entry fun open_position<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -702,6 +704,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 2
+    #[lint_allow(self_transfer)]
     public entry fun decrease_position<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -1086,6 +1089,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 8
+    #[lint_allow(self_transfer)]
     public entry fun execute_open_position_order<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -1763,6 +1767,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 19
+    #[lint_allow(self_transfer)]
     public entry fun open_position_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -1905,6 +1910,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 20
+    #[lint_allow(self_transfer)]
     public entry fun decrease_position_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -2185,6 +2191,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 23
+    #[lint_allow(self_transfer)]
     public entry fun execute_open_position_order_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
