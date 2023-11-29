@@ -8,7 +8,7 @@ read -p "Import max price interval in seconds (default: 20): " max_interval
 read -p "Import max price confidence (default: 18446744073709551615): " max_price_confidence
 read -p "Import param multiplier (default: 20000000000000000): " param_multiplier
 read -p "Import param max (default: 7500000000000000): " param_max
-read -p "Import max leverage (default: 100): " max_leverage
+read -p "Import max leverage (default: 10): " max_leverage
 read -p "Import min holding duration seconds (default: 20): " min_duration
 read -p "Import max reserved multiplier (default: 20): " max_reserved
 read -p "Import min collateral value (default: 5000000000000000000): " min_collateral_value
@@ -43,7 +43,7 @@ if [ -z "${param_max}" ]; then
     param_max=7500000000000000
 fi
 if [ -z "${max_leverage}" ]; then
-       max_leverage=100
+       max_leverage=10
 fi
 if [ -z "${min_duration}" ]; then
        min_duration=20
