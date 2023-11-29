@@ -225,7 +225,8 @@
       }
     },
     "referrals_parent": "0xbf981cf3f532dc8e4f236554ba4dd6e0e3c4844b5cf877f9012a932c3d0bf639",
-    "orders_parent": "0x6a318ab871926d031bd3bf2cebb0426d44d917f0cc649ffea40ccba02b89700d"
+    "orders_parent": "0x6a318ab871926d031bd3bf2cebb0426d44d917f0cc649ffea40ccba02b89700d",
+    "package_v1_1_1": "0xc64701f8adc8852586aef50cc834dfc01740fee871944946c659fb3747f8f5e7"
   },
   "pyth_feeder": {
     "package": "0x8d97f1cd6ac663735be08d1d2b6d02a159e711586461306ce60a2b7a6a565a9e",
