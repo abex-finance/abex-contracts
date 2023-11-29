@@ -9,6 +9,11 @@ module abex_core::agg_price {
     use pyth::price::{Self as pyth_price};
     use pyth::price_info::{PriceInfoObject as PythFeeder};
 
+    use pyth_v1::pyth::get_price_unsafe as get_price_unsafe_v1;
+    use pyth_v1::i64::{Self as pyth_i64_v1};
+    use pyth_v1::price::{Self as pyth_price_v1};
+    use pyth_v1::price_info::{PriceInfoObject as PythFeederV1};
+
     use abex_core::decimal::{Self, Decimal};
 
     friend abex_core::market;
@@ -18,7 +23,7 @@ module abex_core::agg_price {
         precision: u64,
     }
 
-    struct AggPriceConfig has store {
+    struct AggPriceConfig has drop, store {
         max_interval: u64,
         max_confidence: u64,
         precision: u64,
@@ -42,6 +47,27 @@ module abex_core::agg_price {
             precision: pow(10, coin::get_decimals(coin_metadata)),
             feeder: object::id(feeder),
         }
+    }
+
+    public(friend) fun new_agg_price_config_v1_1<T>(
+        max_interval: u64,
+        max_confidence: u64,
+        coin_metadata: &CoinMetadata<T>,
+        feeder: &PythFeederV1,
+    ): AggPriceConfig {
+        AggPriceConfig {
+            max_interval,
+            max_confidence,
+            precision: pow(10, coin::get_decimals(coin_metadata)),
+            feeder: object::id(feeder),
+        }
+    }
+
+    public(friend) fun update_agg_price_config_feeder(
+        config: &mut AggPriceConfig,
+        feeder: &PythFeederV1,
+    ) {
+        config.feeder = object::id(feeder);
     }
 
     public fun from_price(config: &AggPriceConfig, price: Decimal): AggPrice {
@@ -77,6 +103,41 @@ module abex_core::agg_price {
             decimal::div_by_u64(decimal::from_u64(value), pow(10, (exp as u8)))
         } else {
             let exp = pyth_i64::get_magnitude_if_positive(&exp);
+            decimal::mul_with_u64(decimal::from_u64(value), pow(10, (exp as u8)))
+        };
+
+        AggPrice { price, precision: config.precision}
+    }
+
+    public fun parse_pyth_feeder_v1_1(
+        config: &AggPriceConfig,
+        feeder: &PythFeederV1,
+        timestamp: u64,
+    ): AggPrice {
+        assert!(object::id(feeder) == config.feeder, ERR_INVALID_PRICE_FEEDER);
+
+        let price = get_price_unsafe_v1(feeder);
+        assert!(
+            pyth_price_v1::get_timestamp(&price) + config.max_interval >= timestamp,
+            ERR_PRICE_STALED,
+        );
+        assert!(
+            pyth_price_v1::get_conf(&price) <= config.max_confidence,
+            ERR_EXCEED_PRICE_CONFIDENCE,
+        );
+
+        let value = pyth_price_v1::get_price(&price);
+        // price can not be negative
+        let value = pyth_i64_v1::get_magnitude_if_positive(&value);
+        // price can not be zero
+        assert!(value > 0, ERR_INVALID_PRICE_VALUE);
+
+        let exp = pyth_price_v1::get_expo(&price);
+        let price = if (pyth_i64_v1::get_is_negative(&exp)) {
+            let exp = pyth_i64_v1::get_magnitude_if_negative(&exp);
+            decimal::div_by_u64(decimal::from_u64(value), pow(10, (exp as u8)))
+        } else {
+            let exp = pyth_i64_v1::get_magnitude_if_positive(&exp);
             decimal::mul_with_u64(decimal::from_u64(value), pow(10, (exp as u8)))
         };
 

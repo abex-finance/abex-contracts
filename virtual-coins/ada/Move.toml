@@ -1,0 +1,14 @@
+[package]
+name = "abex-ada"
+version = "0.0.1"
+published-at = "0xc64ba9b6ae60118934216041b5053b0e46e8bfe4bbcb7bf7aa3805b8fc0307c4"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "sui-v1.1.1"
+
+[addresses]
+abex_ada = "0xc64ba9b6ae60118934216041b5053b0e46e8bfe4bbcb7bf7aa3805b8fc0307c4"
+std = "0x1"
+sui = "0x2"

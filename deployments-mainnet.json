@@ -1,106 +1,320 @@
 {
   "abex_core": {
-    "package": "0x8a00fe884846659e4f43b501d153b7e2b2f3039c13f5f35b248f0481eb8c15e8",
-    "upgrade_cap": "0x833393173284305e173413654843af9bde7e53eb71e1e3557e44190475be61ce",
-    "admin_cap": "0x3d9b4d351b81ebe03ed01dd56db7530686327cd1ee21f98987aad7212f30d87f",
-    "market": {
-      "id": "0x1bf4da201b2da86f300832e0fccd60ced71b96342a60b5093d8d1b3f67d57b00",
-      "version": "13440937"
-    },
-    "alp_metadata": {
-      "id": "0xc4297e9474b610f26737230358d2f3d06d6614aa7a639858f988535b2bfd88b6",
-      "version": "13440937"
-    },
-    "rebase_fee_model": {
-      "id": "0xf004cf8cecf802ecdf7261afa35263ee9cf7452146fe018ea6937b0d5899f0b9",
-      "version": "13440937"
-    },
-    "vaults_parent": "0xe86a24528b429641fab6511a032f9acca1fd327be291422c48d411a149a2584c",
-    "symbols_parent": "0xd302b6de6dbd46f188dd176e50eb79751c3eb15fcd14ad41f5e25ecebc34eebb",
-    "positions_parent": "0xb2cb7ed4baf2222a6b4419d7a230448ade70ec293d1eedc8ab678b53459e1e74",
+    "package": "0xceab84acf6bf70f503c3b0627acaff6b3f84cee0f2d7ed53d00fa6c2a168d14f",
+    "package_v1_1": "0xe625f9b22467751d9adccdb53f12faa64dbebb5343d2f9f52849b012d55809f5",
+    "upgrade_cap": "0x2b117061b408979881624c3724d8316c976308396e38d971164f2a65087bc726",
+    "admin_cap": "0x7806e23aa5b39b768a10bbe440438e85ede1943675145c26f96706fe7cd3234c",
+    "market": "0x7705d4670e7ef4623d6392888f73f6773b5f0218b6cb1486a4be238692a58bca",
+    "alp_metadata": "0xaa85795a822c8d267582f01cef583bba67f7aeeb3953f722008802f33d123997",
+    "rebase_fee_model": "0xf22dade6ffddf5a70f7fa433d34e061c4603d6249741b2c596554872f71469ad",
+    "vaults_parent": "0x3c6595e543c4766dd63b5b2fa918516bac2920bc1944da068be031dced46a18d",
+    "symbols_parent": "0xa23d31c1fed163b675911aef7ed57bf4acf9f21f41fca02df7cef42c87083351",
+    "positions_parent": "0x251910096bd975afdb4413a3b4c0a158b0097c0c4cd242e1a24db5882011cac2",
     "vaults": {
       "sui": {
-        "weight": "1000000000000000000",
-        "reserving_fee_model": "0xc39359ee85f891d9a7a71d23b0f4064cb5653e2f1a39f7b3b4eb63fbaee3c685"
+        "weight": "100000000000000000",
+        "reserving_fee_model": "0x399c8e85198dfa743d30510bd1aee177e7ad87e760b1a597834817c0b63b738a"
       },
       "usdc": {
-        "weight": "1000000000000000000",
-        "reserving_fee_model": "0x5bb169793f132b3034218047d8942ca535affa13403c0cc9dbb361f252f4d44e"
+        "weight": "600000000000000000",
+        "reserving_fee_model": "0x317ecf514961f6a54c24004fbe67851411dfa4401698b1e1b9973ff1f2dbb349"
+      },
+      "usdt": {
+        "weight": "300000000000000000",
+        "reserving_fee_model": "0x64beb67b9d62cf4c85ef80afe780e179edc536aa831d092186cbfec69cad6f24"
       }
     },
     "symbols": {
+      "long_btc": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xc04b87ef014038ae78cb20e7942b1dddfd6b63894af5504ae44a4732e6fc2b2f",
+        "position_config": "0xc168133ab91aa70ff257b749d593b7cc74c492d3f8324a141578a6b95cc61ddb"
+      },
+      "short_btc": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x07f83dde333e1c42c64ad0233d7f72164ee0ec628e632249df1c483d2e567b27",
+        "position_config": "0xaf26d0abeeb539fde005ba131d19ad2bf40e75f0bd23c7aa986b3edd91028afb"
+      },
+      "long_eth": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x44224a4666b76eb8c86850a1cc6c2d4a2317eba53a5055566011df946007f999",
+        "position_config": "0xeb2309c0cbde79e21234d90fb555e6d902036ed4bf6b372d5b8b03eb5fd56216"
+      },
+      "short_eth": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x527e696085bdb06c724e5dd69f1f8ebc4feff566047619cbf7a5a0f37789b787",
+        "position_config": "0x17e30687f8eb1755ea29166bab8998566b7d787bf07c53f507f04765da722d4b"
+      },
+      "long_bnb": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x04da7aa452f72c631fcddc8e5cf93aa391a72045f26b130005c3d141c1342145",
+        "position_config": "0x0c74d87945f822049c760ac00c5a6eecbd2b885f6ced49e3bfec06bb6b9c7bda"
+      },
+      "short_bnb": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xeffad81d63384babe35b968fa82d4a5292567e6f969e5cf34f902b5e0cd9a66d",
+        "position_config": "0x34766fbeecd31a32cfff3444d97db74cc00c61abd5df0f046a1c4d75d3c04043"
+      },
+      "long_ada": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xc9f2f57a59a993826258318ffbe78e4c3721330dbb7e3758b917ea867f1785ce",
+        "position_config": "0x5acda9b78fc6a2ec75f6625fc5f68e2e92317348fd9be60668b95ec0d1502a38"
+      },
+      "short_ada": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xa15a8e19c7a663c84d4c8562a8b457f04d4d0d45b9be76a2bba61fbdcc62f65e",
+        "position_config": "0x34cd7c7ef41b87c4a3de5e92100e332755c471cd674f54059ddfb1442e2a9e69"
+      },
+      "long_doge": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x8c9d95819dbe07f36596d845b2b37b98dfa4ed4949003114d6e5b0b253242913",
+        "position_config": "0xb7287d40881baa9789e22086c757d16dfbfdb377e87cd58e4853cdca70547957"
+      },
+      "short_doge": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x2c6c6861ea20ea6af4c88ac175745ca5de1d6df5cfa29764301fb8fbcb61330d",
+        "position_config": "0xeb491a6e9fbf93a23fd4d9a001d34974d12c6edbf55d5bf0f9fb85d05dd30f58"
+      },
+      "long_sol": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x61f2c3f5fa7e824ce098044687a53124e56641a766b8d39fa28d4597394baa66",
+        "position_config": "0x1a8f32f676740c0fb2715d1b7fe2df7963d501746134ff851e1f3704afaa3566"
+      },
+      "short_sol": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xf8a1b1f34fc5ac5b7733fbbf869c6decd269b08004287a115720305138d9f9f8",
+        "position_config": "0xc041a3ba0ef4a65feab627e75df43c20c626972f35029b3e7c5c51c72827ea07"
+      },
+      "long_ltc": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x3daa2d79d4b34f8d76126d9aa0df8675f3dc2e801ffff2f04850558e9df79be3",
+        "position_config": "0x4fa4d4b47bd6b5c611b513bc3b79645a04a085e4e973d76b4aced44d7631b179"
+      },
+      "short_ltc": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xddd9646f8d234d09dd640a30cf6e1d9b217a054e9ad77dc952d43f33927dbca8",
+        "position_config": "0xa0375a4e9d063b387dcddcb37c874e7e2287b29385acca7c6b78a9e30b982041"
+      },
+      "long_dot": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xe48fbbd44305658566ad708ba380d1f3c83a2e93361f72989baa40f110a8cddf",
+        "position_config": "0x56d2ca3714d5bd1f44df556a415f3c1d88abad791b616e7c971871094d708470"
+      },
+      "short_dot": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xdcfc6b6e0ce466929e8b6ae37b8cbf0c9e4509256093a70daf82ac58063c4ae5",
+        "position_config": "0x5eaa4e5cf29b7ec8631a995803b40a028dd429261890f81ba9f8a76baa0bc272"
+      },
+      "long_avax": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xd01241ada6283a8ba06078e1bade96f635a6b593cf134c4b85da9f9c040f0dec",
+        "position_config": "0x00274716f8239be07426b2b620eb5c92be52aa5ccc99cf63ce8190b78501f52a"
+      },
+      "short_avax": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x4ba99afaba455d22fa19dc9cfacb52b05875f802ea3f69db1e9669e3739a7e9c",
+        "position_config": "0x8c72fce88469910e192818c41d7f49a2f03a87ee12263c3ebee9df029c46889c"
+      },
       "long_sui": {
         "supported_collaterals": [
           "sui",
+          "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xdb61681ae4182e2c65cf163b28c0cfd05d73030dcbbe9dd5ada4811c33c7ebbe",
-        "position_config": "0x55669efe3839e80edca3b8321033c0df619c5412440a06c8bf912c74d86766ea"
+        "funding_fee_model": "0xc2afee98274bfc9ab93139ce76406af45dc3c1b64ff694166359c04a2ee6a932",
+        "position_config": "0xa838f67e017148b0a55f0480355a0b50ee6f89eef8ae142500fb6a85ecc58dbd"
       },
       "short_sui": {
         "supported_collaterals": [
           "sui",
+          "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x1571335980f8b2d5b7e8c12d18799dbf59b5f9baac3237cea8fdbd12d2b838e2",
-        "position_config": "0xaac3d8eec023e2a76ffc089562c226c89baeebfacefe714f9baaeea1f7dfd43b"
+        "funding_fee_model": "0xec7ae38984b89805912c9bc1cb90e9a86bcfe0978e8c1b1f8de048593d7907e0",
+        "position_config": "0xb18548c1d3d90b30ed911a65de363e141f821733de5b2da019b028038c20c688"
       },
-      "long_btc": {
+      "long_cetus": {
         "supported_collaterals": [
+          "sui",
+          "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0xd8a12b530d48382ab083cd908aa6a50569d72cb82b5ab64bd1395559e101887f",
-        "position_config": "0x623ef94bb4950e43e656afe754e5a289df271c6a168ee90bc0cb0565d78765ed"
+        "funding_fee_model": "0x37dfbf87e1606022cdd4ad62a30154a89ab4f6c9f1785cbcf89199b2597d3a2b",
+        "position_config": "0x3ca8732c9d8080ab2249c7d05bd37bb3aa3d870ebffe6af7f858e2be1233e224"
       },
-      "short_btc": {
+      "short_cetus": {
         "supported_collaterals": [
+          "sui",
+          "usdt",
           "usdc"
         ],
-        "funding_fee_model": "0x8ca0172841d9fb0e53080f4147d8df106ca52dbfc6dba6f5f66068a8ecf9f579",
-        "position_config": "0x78bb398a5a0a3d4d9e276e8d09736506c602a713afeda4a7bffb2ce2818e5a31"
+        "funding_fee_model": "0x658015a4084d32bd0a3159b418d351d76bf6af6437d547e1b67eca143c7770e4",
+        "position_config": "0xd30ed143fb0275714c0634ddf764cd5a482713ae27aff7b9eb19a9a979967d59"
       }
     },
-    "referrals_parent": "0x3d97ccc832b056649c8bc9bf41e667ab371de4e71a051f359c13a8b2bd45ce60",
-    "orders_parent": "0x8fe424e7101ac2b8b647ac7b3c79c81b06b356b8ea08acc0877f12925b84fe12"
+    "referrals_parent": "0xbf981cf3f532dc8e4f236554ba4dd6e0e3c4844b5cf877f9012a932c3d0bf639",
+    "orders_parent": "0x6a318ab871926d031bd3bf2cebb0426d44d917f0cc649ffea40ccba02b89700d"
   },
   "pyth_feeder": {
-    "package": "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302",
-    "state": "0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f",
+    "package": "0x8d97f1cd6ac663735be08d1d2b6d02a159e711586461306ce60a2b7a6a565a9e",
+    "state": "0x1f9310238ee9298fb703c3419030b35b22bb1cc37113e3bb5007c99aec79e5b8",
     "wormhole": {
       "package": "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a",
       "state": "0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c"
     },
     "feeder": {
-      "sui": "0x168aa44fa92b27358beb17643834078b1320be6adf1b3bb0c7f018ac3591db1a",
-      "btc": "0x144ec4135c65af207b97b3d2dfea9972efc7d80cc13a960ae1d808a3307d90ca",
-      "usdt": "0x64f8db86bef3603472cf446c7ab40278af7f4bcda97c7599ad4cb33d228e31eb",
-      "usdc": "0x1db46472aa29f5a41dd4dc41867fdcbc1594f761e607293c40bdb66d7cd5278f"
+      "sui": "0x801dbc2f0053d34734814b2d6df491ce7807a725fe9a01ad74a07e9c51396c37",
+      "btc": "0x9a62b4863bdeaabdc9500fce769cf7e72d5585eeb28a6d26e4cafadc13f76ab2",
+      "eth": "0x9193fd47f9a0ab99b6e365a464c8a9ae30e6150fc37ed2a89c1586631f6fc4ab",
+      "usdt": "0x985e3db9f93f76ee8bace7c3dd5cc676a096accd5d9e09e9ae0fb6e492b14572",
+      "usdc": "0x5dec622733a204ca27f5a90d8c2fad453cc6665186fd5dff13a83d0b6c9027ab",
+      "bnb": "0x9c6e77f0ecfc46aac395e21c52ccb96518f85acacae743c5b47f4ca5e29826c3",
+      "ada": "0xf28e4e40a96948a19805fe76a4da373a262daac47588bac78d73033bce7b5a38",
+      "doge": "0xd59a5f5173424ba725a7d033d86f2eadf2745f87a908bd27e1d27339eff598ce",
+      "sol": "0x9d0d275efbd37d8a8855f6f2c761fa5983293dd8ce202ee5196626de8fcd4469",
+      "ltc": "0x38bff6edbebb69ebf0c00c085789608986acdcf78186766cce10f0aae18bb465",
+      "dot": "0xba8f9877ba48278e291c7648e42d1d5e98899e215c205aa43bd3c104677ad90c",
+      "avax": "0x29e37978cb1c9501bda5d7c105f24f0058bc1668637e307fbc290dba48cb918d",
+      "cetus": "0x24c0247fb22457a719efac7f670cdc79be321b521460bd6bd2ccfa9f80713b14"
     }
   },
   "coins": {
     "sui": {
       "decimals": 9,
       "module": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
-      "metadata": "0x9258181f5ceac8dbffb7030890243caed69a9599d2886d957a9cb7656af3bdb3",
-      "treasury": null
+      "metadata": "0x9258181f5ceac8dbffb7030890243caed69a9599d2886d957a9cb7656af3bdb3"
     },
     "btc": {
-      "decimals": 9,
-      "module": "0xaae67868f64585f2029b7d66a2ecd286e1493776097c98ae7ed499c954dd4e68::btc::BTC",
-      "metadata": "0xe7728279203190ac50eac460dc12b9e4d72d8fc60454d8803b38b5307925d539",
-      "treasury": "0x874d52c86d11a13eb7b433e0b3a53f6eaa255bec5bd181b677b56c6c1a8d55ae"
+      "decimals": 8,
+      "module": "0x027792d9fed7f9844eb4839566001bb6f6cb4804f66aa2da6fe1ee242d896881::coin::COIN",
+      "metadata": "0x5d3c6e60eeff8a05b693b481539e7847dfe33013e7070cdcb387f5c0cac05dfd"
     },
-    "usdt": {
-      "decimals": 6,
-      "module": "0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN",
-      "metadata": "0xfb0e3eb97dd158a5ae979dddfa24348063843c5b20eb8381dd5fa7c93699e45c",
-      "treasury": null
+    "eth": {
+      "decimals": 8,
+      "module": "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN",
+      "metadata": "0x8900e4ceede3363bef086d6b50ca89d816d0e90bf6bc46efefe1f8455e08f50f"
+    },
+    "bnb": {
+      "decimals": 8,
+      "module": "0xb848cce11ef3a8f62eccea6eb5b35a12c4c2b1ee1af7755d02d7bd6218e8226f::coin::COIN",
+      "metadata": "0x1d0975ab0726f2e52384b6ea0f2c94c2dbdad8b004ee6b5ee552a3c789c044f0"
     },
     "usdc": {
       "decimals": 6,
       "module": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
-      "metadata": "0x4fbf84f3029bd0c0b77164b587963be957f853eccf834a67bb9ecba6ec80f189",
-      "treasury": null
+      "metadata": "0x4fbf84f3029bd0c0b77164b587963be957f853eccf834a67bb9ecba6ec80f189"
+    },
+    "usdt": {
+      "decimals": 6,
+      "module": "0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN",
+      "metadata": "0xfb0e3eb97dd158a5ae979dddfa24348063843c5b20eb8381dd5fa7c93699e45c"
+    },
+    "sol": {
+      "decimals": 8,
+      "module": "0xb7844e289a8410e50fb3ca48d69eb9cf29e27d223ef90353fe1bd8e27ff8f3f8::coin::COIN",
+      "metadata": "0x4d2c39082b4477e3e79dc4562d939147ab90c42fc5f3e4acf03b94383cd69b6e"
+    },
+    "avax": {
+      "decimals": 8,
+      "module": "0x1e8b532cca6569cab9f9b9ebc73f8c13885012ade714729aa3b450e0339ac766::coin::COIN",
+      "metadata": "0x23580088ff9f83848f86bc1cbf4964735116027e9cccad11b2dc96f16badab72"
+    },
+    "ada": {
+      "decimals": 6,
+      "module": "0xc64ba9b6ae60118934216041b5053b0e46e8bfe4bbcb7bf7aa3805b8fc0307c4::ada::ADA",
+      "metadata": "0x98ea3de73d8b09e7031c0b6ef4346238b7fb4c4321afc121a42a88cc14ef81d1"
+    },
+    "doge": {
+      "decimals": 8,
+      "module": "0x577c6b476f7fee9c3d1947ebc24aa4b8ee4ce196f299fec6cee46d5a3052cbaf::doge::DOGE",
+      "metadata": "0x0bb53c43f661aa94f7062b6fcf5e4df0f39a1acc385dd73e06c9f288f081bb1f"
+    },
+    "dot": {
+      "decimals": 10,
+      "module": "0xffbe3b8f0fa46c54f3e6446ebc644136949beb6c7db45b9153e7cf7d53c9a7f9::dot::DOT",
+      "metadata": "0x0b01a0dfbe16b061ab94ede81ffb9ddec8647b8f41cdcb28b361acb79e447c34"
+    },
+    "ltc": {
+      "decimals": 8,
+      "module": "0xcb9d2191108ddc53c6677bbf4c5fcf68eeb76110735cbecb3784864829f1de29::ltc::LTC",
+      "metadata": "0xceed84ccd22ec1e69320bbbc8660cae6d7dfd48e235eeb6628fd8b9a5f7a9b74"
+    },
+    "cetus": {
+      "decimals": 9,
+      "module": "0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS",
+      "metadata": "0x4c0dce55eff2db5419bbd2d239d1aa22b4a400c01bbb648b058a9883989025da"
     }
   }
 }

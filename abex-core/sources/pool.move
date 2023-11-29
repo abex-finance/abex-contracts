@@ -133,6 +133,18 @@ module abex_core::pool {
         liquidator_bonus_amount: u64,
     }
 
+    struct LiquidatePositionEventV1_1 has copy, drop {
+        liquidator: address,
+        collateral_price: Decimal,
+        index_price: Decimal,
+        position_size: Decimal,
+        reserving_fee_value: Decimal,
+        funding_fee_value: SDecimal,
+        delta_realised_pnl: SDecimal,
+        loss_amount: u64,
+        liquidator_bonus_amount: u64,
+    }
+
     // === Errors ===
 
     // vault errors
@@ -216,6 +228,10 @@ module abex_core::pool {
         }
     }
 
+    public(friend) fun mut_vault_price_config<C>(vault: &mut Vault<C>): &mut AggPriceConfig {
+        &mut vault.price_config
+    }
+
     public(friend) fun new_symbol(
         model_id: ID,
         price_config: AggPriceConfig,
@@ -236,12 +252,16 @@ module abex_core::pool {
         }
     }
 
-    public(friend) fun add_collateral_to_symbol<C>(config: &mut Symbol) {
-        vec_set::insert(&mut config.supported_collaterals, type_name::get<C>());
+    public(friend) fun mut_symbol_price_config(symbol: &mut Symbol): &mut AggPriceConfig {
+        &mut symbol.price_config
     }
 
-    public(friend) fun remove_collateral_from_symbol<C>(config: &mut Symbol) {
-        vec_set::remove(&mut config.supported_collaterals, &type_name::get<C>());
+    public(friend) fun add_collateral_to_symbol<C>(symbol: &mut Symbol) {
+        vec_set::insert(&mut symbol.supported_collaterals, type_name::get<C>());
+    }
+
+    public(friend) fun remove_collateral_from_symbol<C>(symbol: &mut Symbol) {
+        vec_set::remove(&mut symbol.supported_collaterals, &type_name::get<C>());
     }
 
     public(friend) fun deposit<C>(
@@ -891,6 +911,105 @@ module abex_core::pool {
             liquidator,
             collateral_price: agg_price::price_of(collateral_price),
             index_price: agg_price::price_of(index_price),
+            reserving_fee_value,
+            funding_fee_value,
+            delta_realised_pnl,
+            loss_amount: trader_loss_amount,
+            liquidator_bonus_amount,
+        };
+
+        (to_liquidator, event)
+    }
+
+    public(friend) fun liquidate_position_v1_1<C>(
+        vault: &mut Vault<C>,
+        symbol: &mut Symbol,
+        position: &mut Position<C>,
+        reserving_fee_model: &ReservingFeeModel,
+        funding_fee_model: &FundingFeeModel,
+        collateral_price: &AggPrice,
+        index_price: &AggPrice,
+        long: bool,
+        lp_supply_amount: Decimal,
+        timestamp: u64,
+        liquidator: address,
+    ): (Balance<C>, LiquidatePositionEventV1_1) {
+        assert!(vault.enabled, ERR_VAULT_DISABLED);
+        assert!(symbol.liquidate_enabled, ERR_LIQUIDATE_DISABLED);
+        assert!(
+            object::id(reserving_fee_model) == vault.reserving_fee_model,
+            ERR_MISMATCHED_RESERVING_FEE_MODEL,
+        );
+        assert!(
+            object::id(funding_fee_model) == symbol.funding_fee_model,
+            ERR_MISMATCHED_FUNDING_FEE_MODEL,
+        );
+
+        // refresh vault
+        refresh_vault(vault, reserving_fee_model, timestamp);
+        // refresh symbol
+        let delta_size = symbol_delta_size(symbol, index_price, long);
+        refresh_symbol(
+            symbol,
+            funding_fee_model,
+            delta_size,
+            lp_supply_amount,
+            timestamp,
+        );
+
+        let (
+            liquidator_bonus_amount,
+            trader_loss_amount,
+            position_amount,
+            reserved_amount,
+            position_size,
+            reserving_fee_amount,
+            reserving_fee_value,
+            funding_fee_value,
+            to_vault,
+            to_liquidator,
+        ) = position::liquidate_position(
+            position,
+            collateral_price,
+            index_price,
+            long,
+            vault.acc_reserving_rate,
+            symbol.acc_funding_rate,
+        );
+
+        // update vault
+        vault.reserved_amount = vault.reserved_amount - reserved_amount;
+        vault.unrealised_reserving_fee_amount = decimal::sub(
+            vault.unrealised_reserving_fee_amount,
+            reserving_fee_amount,
+        );
+        let _ = balance::join(&mut vault.liquidity, to_vault);
+
+        // update symbol
+        symbol.opening_size = decimal::sub(symbol.opening_size, position_size);
+        symbol.opening_amount = symbol.opening_amount - position_amount;
+        symbol.unrealised_funding_fee_value = sdecimal::sub(
+            symbol.unrealised_funding_fee_value,
+            funding_fee_value,
+        );
+        let delta_realised_pnl = sdecimal::sub_with_decimal(
+            sdecimal::from_decimal(
+                true,
+                agg_price::coins_to_value(
+                    collateral_price,
+                    trader_loss_amount,
+                ),
+            ),
+            // exclude reserving fee
+            reserving_fee_value,
+        );
+        symbol.realised_pnl = sdecimal::add(symbol.realised_pnl, delta_realised_pnl);
+
+        let event = LiquidatePositionEventV1_1 {
+            liquidator,
+            collateral_price: agg_price::price_of(collateral_price),
+            index_price: agg_price::price_of(index_price),
+            position_size,
             reserving_fee_value,
             funding_fee_value,
             delta_realised_pnl,
