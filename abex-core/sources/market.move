@@ -535,31 +535,33 @@ module abex_core::market {
         });
     }
     
-    // public entry fun replace_position_config<I, D>(
-    //     _a: &AdminCap,
-    //     position_config: &mut WrappedPositionConfig<I, D>,
-    //     max_leverage: u64,
-    //     min_holding_duration: u64,
-    //     max_reserved_multiplier: u64,
-    //     min_collateral_value: u256,
-    //     open_fee_bps: u128,
-    //     decrease_fee_bps: u128,
-    //     liquidation_threshold: u128,
-    //     liquidation_bonus: u128,
-    // ) {
-    //     position_config.inner = position::new_position_config(
-    //         max_leverage,
-    //         min_holding_duration,
-    //         max_reserved_multiplier,
-    //         min_collateral_value,
-    //         open_fee_bps,
-    //         decrease_fee_bps,
-    //         liquidation_threshold,
-    //         liquidation_bonus,
-    //     );
-    // }
+    // add in v1.1.1
+    public entry fun replace_position_config<I, D>(
+        _a: &AdminCap,
+        position_config: &mut WrappedPositionConfig<I, D>,
+        max_leverage: u64,
+        min_holding_duration: u64,
+        max_reserved_multiplier: u64,
+        min_collateral_value: u256,
+        open_fee_bps: u128,
+        decrease_fee_bps: u128,
+        liquidation_threshold: u128,
+        liquidation_bonus: u128,
+    ) {
+        position_config.inner = position::new_position_config(
+            max_leverage,
+            min_holding_duration,
+            max_reserved_multiplier,
+            min_collateral_value,
+            open_fee_bps,
+            decrease_fee_bps,
+            liquidation_threshold,
+            liquidation_bonus,
+        );
+    }
 
     // version = 0x1
+    #[allow(unused_mut_ref)]
     public entry fun add_new_referral<L>(
         market: &mut Market<L>,
         referrer: address,
@@ -731,6 +733,7 @@ module abex_core::market {
 
     // version = 0x1 << 2
     #[lint_allow(self_transfer)]
+    #[allow(unused_mut_ref)]
     public entry fun decrease_position<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -876,6 +879,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 3
+    #[allow(unused_mut_ref)]
     public entry fun decrease_reserved_from_position<L, C, I, D>(
         clock: &Clock,
         market: &mut Market<L>,
@@ -918,6 +922,7 @@ module abex_core::market {
     }
 
     // version = 0x1 << 4
+    #[allow(unused_mut_ref)]
     public entry fun pledge_in_position<L, C, I, D>(
         market: &mut Market<L>,
         position_cap: &PositionCap<C, I, D>,
@@ -1937,6 +1942,7 @@ module abex_core::market {
 
     // version = 0x1 << 20
     #[lint_allow(self_transfer)]
+    #[allow(unused_mut_ref)]
     public entry fun decrease_position_v1_1<L, C, I, D, F>(
         clock: &Clock,
         market: &mut Market<L>,
