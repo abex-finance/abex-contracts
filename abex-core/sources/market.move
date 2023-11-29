@@ -518,6 +518,7 @@ module abex_core::market {
         decrease_fee_bps: u128,
         liquidation_threshold: u128,
         liquidation_bonus: u128,
+        _ctx: &mut TxContext,
     ) {
         position_config.inner = position::new_position_config(
             max_leverage,
