@@ -23,7 +23,7 @@ module abex_core::agg_price {
         precision: u64,
     }
 
-    struct AggPriceConfig has drop, store {
+    struct AggPriceConfig has store {
         max_interval: u64,
         max_confidence: u64,
         precision: u64,

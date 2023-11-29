@@ -139,6 +139,17 @@ module abex_core::market {
         liquidate_enabled: bool,
     }
 
+    struct PositionConfigReplaced<phantom I, phantom D> has copy, drop {
+        max_leverage: u64,
+        min_holding_duration: u64,
+        max_reserved_multiplier: u64,
+        min_collateral_value: u256,
+        open_fee_bps: u128,
+        decrease_fee_bps: u128,
+        liquidation_threshold: u128,
+        liquidation_bonus: u128,
+    }
+
     struct PositionClaimed<N: copy + drop, E: copy + drop> has copy, drop {
         position_name: Option<N>,
         event: E,
@@ -558,6 +569,18 @@ module abex_core::market {
             liquidation_threshold,
             liquidation_bonus,
         );
+
+        // emit position config replaced
+        event::emit(PositionConfigReplaced<I, D> {
+            max_leverage,
+            min_holding_duration,
+            max_reserved_multiplier,
+            min_collateral_value,
+            open_fee_bps,
+            decrease_fee_bps,
+            liquidation_threshold,
+            liquidation_bonus,
+        });
     }
 
     // version = 0x1
