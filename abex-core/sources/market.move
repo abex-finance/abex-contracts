@@ -133,6 +133,12 @@ module abex_core::market {
 
     struct CollateralRemoved<phantom C, phantom I, phantom D> has copy, drop {}
 
+    struct SymbolStatusUpdated<phantom I, phantom D> has copy, drop {
+        open_enabled: bool,
+        decrease_enabled: bool,
+        liquidate_enabled: bool,
+    }
+
     struct PositionClaimed<N: copy + drop, E: copy + drop> has copy, drop {
         position_name: Option<N>,
         event: E,
@@ -506,32 +512,52 @@ module abex_core::market {
         // emit collateral removed
         event::emit(CollateralRemoved<C, I, D> {});
     }
-    
-    // update in v1.1.1
-    public entry fun replace_position_config<I, D>(
+
+    // add in v1.1.1
+    public entry fun set_symbol_status<L, I, D>(
         _a: &AdminCap,
-        position_config: &mut WrappedPositionConfig<I, D>,
-        max_leverage: u64,
-        min_holding_duration: u64,
-        max_reserved_multiplier: u64,
-        min_collateral_value: u256,
-        open_fee_bps: u128,
-        decrease_fee_bps: u128,
-        liquidation_threshold: u128,
-        liquidation_bonus: u128,
-        _ctx: &mut TxContext,
+        market: &mut Market<L>,
+        open_enabled: bool,
+        decrease_enabled: bool,
+        liquidate_enabled: bool,
     ) {
-        position_config.inner = position::new_position_config(
-            max_leverage,
-            min_holding_duration,
-            max_reserved_multiplier,
-            min_collateral_value,
-            open_fee_bps,
-            decrease_fee_bps,
-            liquidation_threshold,
-            liquidation_bonus,
+        let symbol: &mut Symbol = bag::borrow_mut(
+            &mut market.symbols,
+            SymbolName<I, D> {},
         );
+        pool::set_symbol_status(symbol, open_enabled, decrease_enabled, liquidate_enabled);
+
+        // emit symbol status updated
+        event::emit(SymbolStatusUpdated<I, D> {
+            open_enabled,
+            decrease_enabled,
+            liquidate_enabled,
+        });
     }
+    
+    // public entry fun replace_position_config<I, D>(
+    //     _a: &AdminCap,
+    //     position_config: &mut WrappedPositionConfig<I, D>,
+    //     max_leverage: u64,
+    //     min_holding_duration: u64,
+    //     max_reserved_multiplier: u64,
+    //     min_collateral_value: u256,
+    //     open_fee_bps: u128,
+    //     decrease_fee_bps: u128,
+    //     liquidation_threshold: u128,
+    //     liquidation_bonus: u128,
+    // ) {
+    //     position_config.inner = position::new_position_config(
+    //         max_leverage,
+    //         min_holding_duration,
+    //         max_reserved_multiplier,
+    //         min_collateral_value,
+    //         open_fee_bps,
+    //         decrease_fee_bps,
+    //         liquidation_threshold,
+    //         liquidation_bonus,
+    //     );
+    // }
 
     // version = 0x1
     public entry fun add_new_referral<L>(

@@ -264,6 +264,17 @@ module abex_core::pool {
         vec_set::remove(&mut symbol.supported_collaterals, &type_name::get<C>());
     }
 
+    public(friend) fun set_symbol_status(
+        symbol: &mut Symbol,
+        open_enabled: bool,
+        decrease_enabled: bool,
+        liquidate_enabled: bool,
+    ) {
+        symbol.open_enabled = open_enabled;
+        symbol.decrease_enabled = decrease_enabled;
+        symbol.liquidate_enabled = liquidate_enabled;
+    }
+
     public(friend) fun deposit<C>(
         vault: &mut Vault<C>,
         fee_model: &RebaseFeeModel,

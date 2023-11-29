@@ -20,7 +20,7 @@ upgrade_cap=`cat $deployments | jq -r ".abex_core.upgrade_cap"`
 package=`cat $deployments | jq -r ".abex_core.package"`
 
 # upgrade
-log=`sui client --client.config $config upgrade --skip-dependency-verification --upgrade-capability $upgrade_cap --gas-budget $gas_budget ../`
+log=`sui client --client.config $config upgrade --upgrade-capability $upgrade_cap --gas-budget $gas_budget ../`
 echo "$log"
 
 ok=`echo "$log" | grep "Status : Success"`
