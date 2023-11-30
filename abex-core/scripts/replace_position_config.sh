@@ -51,21 +51,21 @@ if [ -z "${liq_bonus}" ]; then
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
-package_v1_1=`cat $deployments | jq -r ".abex_core.package_v1_1"`
+package_v1_1_1=`cat $deployments | jq -r ".abex_core.package_v1_1_1"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
-position_config=`cat $deployments | jq -r ".abex_core.symbols.${direction}_${coin}.position_config"`
+declare -l symbol=${direction}_${coin}
+position_config=`cat $deployments | jq -r ".abex_core.symbols.$symbol.position_config"`
 
 # replace position config
 log=`sui client --client.config $config \
-       call --gas-budget $gas_budget \
-              --package ${package_v1_1} \
+       call --gas-budget ${gas_budget} \
+              --package ${package_v1_1_1} \
               --module market \
               --function replace_position_config \
               --type-args ${coin_module} $package::market::$direction \
               --args ${admin_cap} \
                      ${position_config} \
-                     ${max_price_confidence} \
                      ${max_leverage} \
                      ${min_duration} \
                      ${max_reserved} \

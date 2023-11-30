@@ -9,6 +9,6 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "mainnet-v1.13.2"
 
 [addresses]
-abex_blur = "0x0"
+abex_blur = "0x484eaa77d5332bda29eee7f839bf297919972a9396b502054e4f1313c4bb953b"
 std = "0x1"
 sui = "0x2"

@@ -223,6 +223,60 @@
         ],
         "funding_fee_model": "0x658015a4084d32bd0a3159b418d351d76bf6af6437d547e1b67eca143c7770e4",
         "position_config": "0xd30ed143fb0275714c0634ddf764cd5a482713ae27aff7b9eb19a9a979967d59"
+      },
+      "long_blur": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xc81ad6058d2fb54ee6759303d826ed181d94ed465bb3f84c0119426dd97f52f2",
+        "position_config": "0x2b8455bed7b1ee4f63825e5e2ac1f9f12ccf54abfaeee4bcfe6124cea006d875"
+      },
+      "short_blur": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0xed2b6a84b6b03e247e05c116d6368413ee371cac5e7b21e2b4a61ffe097f952d",
+        "position_config": "0xcf68903ea7058914e22b81412763ddcb199fb977c74c61710f198e1284512e4e"
+      },
+      "long_pepe": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x890dd21ae6c4190940575085b23ed3512e0a605fd055cd721790d8480b521002",
+        "position_config": "0x29a8bdb34515ccbbbf49b6f0219d52ad01cc4629221375442b5f2b4036e20a74"
+      },
+      "short_pepe": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x1dc41a26ae8a4d9167e12df574177b292caa3b3d3e947ad730bbfbb543d922d4",
+        "position_config": "0x5f289075495f1f3587dc9bbdca776b5d1a6068be2ba9eaa85deaf44b2aa5b914"
+      },
+      "long_wld": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x276e50f450345e1f4af6c3f163e0eeec32754700dda887f2f3e81052ce8bd8d9",
+        "position_config": "0x06ea3f8387f592e9310c911059643966853a08b450a855b84cf8a987339b4f5e"
+      },
+      "short_wld": {
+        "supported_collaterals": [
+          "sui",
+          "usdt",
+          "usdc"
+        ],
+        "funding_fee_model": "0x9a746263a56bc9032e41a65f38701fb7fba77b32503faaae9737c26231182250",
+        "position_config": "0x98a02c92008a2b3f7aebc4008d33368d27494f4eccb3adc90f0ec4976ddf93b9"
       }
     },
     "referrals_parent": "0xbf981cf3f532dc8e4f236554ba4dd6e0e3c4844b5cf877f9012a932c3d0bf639",
@@ -320,6 +374,24 @@
       "decimals": 9,
       "module": "0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS",
       "metadata": "0x4c0dce55eff2db5419bbd2d239d1aa22b4a400c01bbb648b058a9883989025da"
+    },
+    "blur": {
+      "decimals": 9,
+      "module": "0x484eaa77d5332bda29eee7f839bf297919972a9396b502054e4f1313c4bb953b::blur::BLUR",
+      "metadata": "0xbc3d4e9bfebfd763b534ae9bd39c4fe685202382f09cbf41b19ac1fedae61cdc",
+      "treasury": "0x254f0998a10ee3799e926427ea6ad2cb4d0b13bcef9b6f61ed262d9ae0d16434"
+    },
+    "pepe": {
+      "decimals": 0,
+      "module": "0x69ce2c5522ab27338a2525f6d451b60fc185e9fb3a5f1aba76ae6a884ddf404e::pepe::PEPE",
+      "metadata": "0x18c00e2eea89a6f5767acbb394826ada79f9d9a481b9e5b022aba6fba0975881",
+      "treasury": "0xf1ba931759bf79036a93c3538706000169491347ae042fce9fcd7683e8718a8f"
+    },
+    "wld": {
+      "decimals": 9,
+      "module": "0xef8b56a5c4b9fd814693e223fdbc22522f75af02a5b3d6c133c8e2d39406f945::wld::WLD",
+      "metadata": "0xbd7e4948fec7a8fc275cbcbcd2e5208dd952d2e7b24344d43e51e9834c72ece5",
+      "treasury": "0x0c332a648c98daaf7f58f731bb42fb371aa41b209dc42a72ada7f63bcfce6013"
     }
   }
 }

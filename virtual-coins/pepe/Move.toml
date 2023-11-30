@@ -9,6 +9,6 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "mainnet-v1.13.2"
 
 [addresses]
-abex_pepe = "0x0"
+abex_pepe = "0x69ce2c5522ab27338a2525f6d451b60fc185e9fb3a5f1aba76ae6a884ddf404e"
 std = "0x1"
 sui = "0x2"
