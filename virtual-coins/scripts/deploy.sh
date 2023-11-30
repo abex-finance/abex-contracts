@@ -37,9 +37,9 @@ if [ -n "$ok" ]; then
        # modify field ".coins.$coin.metadata" in $deployments
        json_content=`echo "$json_content" | jq ".coins.$coin.metadata = \"$metadata\""`
 
-       treasury=`echo "$log" | grep "0x2::coin::TreasuryCap<$package::$coin::${coin_upper}>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
-       # modify field ".coins.$coin.treasury" in $deployments
-       json_content=`echo "$json_content" | jq ".coins.$coin.treasury = \"$treasury\""`
+       # treasury=`echo "$log" | grep "0x2::coin::TreasuryCap<$package::$coin::${coin_upper}>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       # # modify field ".coins.$coin.treasury" in $deployments
+       # json_content=`echo "$json_content" | jq ".coins.$coin.treasury = \"$treasury\""`
 
        if [ -n "$json_content" ]; then
               echo "$json_content" | jq . > $deployments

@@ -378,20 +378,17 @@
     "blur": {
       "decimals": 9,
       "module": "0x484eaa77d5332bda29eee7f839bf297919972a9396b502054e4f1313c4bb953b::blur::BLUR",
-      "metadata": "0xbc3d4e9bfebfd763b534ae9bd39c4fe685202382f09cbf41b19ac1fedae61cdc",
-      "treasury": "0x254f0998a10ee3799e926427ea6ad2cb4d0b13bcef9b6f61ed262d9ae0d16434"
+      "metadata": "0xbc3d4e9bfebfd763b534ae9bd39c4fe685202382f09cbf41b19ac1fedae61cdc"
     },
     "pepe": {
       "decimals": 0,
       "module": "0x69ce2c5522ab27338a2525f6d451b60fc185e9fb3a5f1aba76ae6a884ddf404e::pepe::PEPE",
-      "metadata": "0x18c00e2eea89a6f5767acbb394826ada79f9d9a481b9e5b022aba6fba0975881",
-      "treasury": "0xf1ba931759bf79036a93c3538706000169491347ae042fce9fcd7683e8718a8f"
+      "metadata": "0x18c00e2eea89a6f5767acbb394826ada79f9d9a481b9e5b022aba6fba0975881"
     },
     "wld": {
       "decimals": 9,
       "module": "0xef8b56a5c4b9fd814693e223fdbc22522f75af02a5b3d6c133c8e2d39406f945::wld::WLD",
-      "metadata": "0xbd7e4948fec7a8fc275cbcbcd2e5208dd952d2e7b24344d43e51e9834c72ece5",
-      "treasury": "0x0c332a648c98daaf7f58f731bb42fb371aa41b209dc42a72ada7f63bcfce6013"
+      "metadata": "0xbd7e4948fec7a8fc275cbcbcd2e5208dd952d2e7b24344d43e51e9834c72ece5"
     }
   }
 }
