@@ -2,8 +2,6 @@
 
 [move]
 version = 0
-manifest_digest = "D3EA4071F5F6F05357FCE591EBAB8C4DD101A369F0B3115B20D895CE3C5005D6"
-deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
 
 dependencies = [
   { name = "Pyth" },
@@ -13,11 +11,11 @@ dependencies = [
 
 [[move.package]]
 name = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.13.2", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.13.2", subdir = "crates\\sui-framework\\packages\\move-stdlib" }
 
 [[move.package]]
 name = "Pyth"
-source = { local = "../vendor/pyth" }
+source = { local = "..\\vendor\\pyth" }
 
 dependencies = [
   { name = "Sui" },
@@ -26,7 +24,7 @@ dependencies = [
 
 [[move.package]]
 name = "PythV1"
-source = { local = "../vendor/pyth-v1" }
+source = { local = "..\\vendor\\pyth-v1" }
 
 dependencies = [
   { name = "Sui" },
@@ -43,7 +41,7 @@ dependencies = [
 
 [[move.package]]
 name = "Wormhole"
-source = { local = "../vendor/wormhole" }
+source = { local = "..\\vendor\\wormhole" }
 
 dependencies = [
   { name = "Sui" },

@@ -20,24 +20,24 @@ config="/root/.sui/sui_config/$env_name-client.yaml"
 sed -i "s/\(abex_$coin\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"0x0\"/" ../$coin/Move.toml
 
 # deploy
-deploy_log=`sui client --client.config $config publish ../$coin --skip-dependency-verification --gas-budget $gas_budget`
-echo "$deploy_log"
+log=`sui client --client.config $config publish ../$coin --skip-dependency-verification --gas-budget $gas_budget`
+echo "$log"
 
-ok=`echo "$deploy_log" | grep "Status : Success"`
+ok=`echo "$log" | grep "Status : Success"`
 if [ -n "$ok" ]; then
-       package=`echo "$deploy_log" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       package=`echo "$log" | grep '"type": String("published")' -A 1 | grep packageId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field "abex_$coin" to $package in Move.toml
        sed -i "s/\(abex_$coin\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$package\"/" ../$coin/Move.toml
        # modify field "published-at" to $package in Move.toml
        sed -i "s/\(published-at\s*=\s*\)\"0x[0-9a-fA-F]\+\"/\1\"$package\"/" ../$coin/Move.toml
        # modify field ".coins.$coin.module" in $deployments
-       json_content=`jq ".coins.$coin.module = \"$package::$coin::$coin_upper\"" $deployments`
+       json_content=`jq ".coins.$coin.module = \"$package::$coin::${coin_upper}\"" $deployments`
 
-       metadata=`echo "$deploy_log" | grep "0x2::coin::CoinMetadata<$package::$coin::$coin_upper>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       metadata=`echo "$log" | grep "0x2::coin::CoinMetadata<$package::$coin::${coin_upper}>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".coins.$coin.metadata" in $deployments
        json_content=`echo "$json_content" | jq ".coins.$coin.metadata = \"$metadata\""`
 
-       treasury=`echo "$deploy_log" | grep "0x2::coin::TreasuryCap<$package::$coin::$coin_upper>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
+       treasury=`echo "$log" | grep "0x2::coin::TreasuryCap<$package::$coin::${coin_upper}>" -A 1 | grep objectId | awk -F 'String\\("' '{print $2}' | awk -F '"\\)' '{print $1}'`
        # modify field ".coins.$coin.treasury" in $deployments
        json_content=`echo "$json_content" | jq ".coins.$coin.treasury = \"$treasury\""`
 
