@@ -1,7 +1,7 @@
 [package]
 name = "abex-wld"
 version = "0.0.1"
-published-at = ""
+published-at = "0xef8b56a5c4b9fd814693e223fdbc22522f75af02a5b3d6c133c8e2d39406f945"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
