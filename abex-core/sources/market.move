@@ -150,6 +150,13 @@ module abex_core::market {
         liquidation_bonus: u128,
     }
 
+    // add in v1.1.2
+    struct ReferralAdded has copy, drop {
+        owner: address,
+        referrer: address,
+        rebate_rate: Rate,
+    }
+
     struct PositionClaimed<N: copy + drop, E: copy + drop> has copy, drop {
         position_name: Option<N>,
         event: E,
@@ -1820,6 +1827,105 @@ module abex_core::market {
         event::emit(SymbolCreated<I, D> {});
     }
 
+    public entry fun force_close_position_v1_1<L, C, I, D>(
+        _a: &AdminCap,
+        clock: &Clock,
+        market: &mut Market<L>,
+        reserving_fee_model: &ReservingFeeModel,
+        funding_fee_model: &FundingFeeModel,
+        collateral_feeder: &PythFeederV1,
+        index_feeder: &PythFeederV1,
+        owner: address,
+        position_id: address,
+        ctx: &mut TxContext,
+    ) {
+        assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
+
+        let timestamp = clock::timestamp_ms(clock) / 1000;
+        let lp_supply_amount = lp_supply_amount(market);
+        let long = parse_direction<D>();
+
+        let vault: &mut Vault<C> = bag::borrow_mut(
+            &mut market.vaults,
+            VaultName<C> {},
+        );
+        let symbol: &mut Symbol = bag::borrow_mut(
+            &mut market.symbols,
+            SymbolName<I, D> {},
+        );
+
+        let position_name = PositionName<C, I, D> {
+            id: object::id_from_address(position_id),
+            owner,
+        };
+        let position: &mut Position<C> = bag::borrow_mut(
+            &mut market.positions,
+            position_name,
+        );
+        let decrease_amount = position::position_amount(position);
+
+        let collateral_price = agg_price::parse_pyth_feeder_v1_1(
+            pool::vault_price_config(vault),
+            collateral_feeder,
+            timestamp,
+        );
+        let index_price = agg_price::parse_pyth_feeder_v1_1(
+            pool::symbol_price_config(symbol),
+            index_feeder,
+            timestamp,
+        );
+
+        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (code, result, _) = pool::decrease_position(
+            vault,
+            symbol,
+            position,
+            reserving_fee_model,
+            funding_fee_model,
+            &collateral_price,
+            &index_price,
+            decimal::zero(),
+            rebate_rate,
+            long,
+            decrease_amount,
+            lp_supply_amount,
+            timestamp,
+        );
+        // should panic when the owner execute the order
+        assert!(code == 0, code);
+            
+        let (to_trader, rebate, event) =
+            pool::unwrap_decrease_position_result(option::destroy_some(result));
+
+        pay_from_balance(to_trader, owner, ctx);
+        pay_from_balance(rebate, referrer, ctx);
+
+        // emit decrease position
+        event::emit(PositionClaimed {
+            position_name: option::some(position_name),
+            event,
+        });
+    }
+
+    public entry fun force_clear_closed_position_v1_1<L, C, I, D>(
+        _a: &AdminCap,
+        market: &mut Market<L>,
+        position_id: address,
+        owner: address,
+        _ctx: &TxContext,
+    ) {
+        let position_name = PositionName<C, I, D> {
+            id: object::id_from_address(position_id),
+            owner,
+        };
+        let position: Position<C> = bag::remove(
+            &mut market.positions,
+            position_name,
+        );
+
+        position::destroy_position(position);
+    }
+
     // version = 0x1 << 19
     #[lint_allow(self_transfer)]
     public entry fun open_position_v1_1<L, C, I, D, F>(
@@ -2598,6 +2704,53 @@ module abex_core::market {
 
         // update handled symbol
         vec_set::insert(&mut valuation.handled, symbol_name);
+    }
+
+    // version = 0x1 << 29
+    public entry fun add_new_referral_v1_1<L>(
+        market: &mut Market<L>,
+        referrer: address,
+        ctx: &TxContext,
+    ) {
+        assert!(market.fun_mask & 0x20000000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
+        let owner = tx_context::sender(ctx);
+        assert!(
+            !table::contains(&market.referrals, owner),
+            ERR_ALREADY_HAS_REFERRAL,
+        );
+
+        let referral = referral::new_referral(referrer, market.rebate_rate);
+        table::add(&mut market.referrals, owner, referral);
+
+        // emit referral added
+        event::emit(ReferralAdded {
+            owner,
+            referrer,
+            rebate_rate: market.rebate_rate,
+        });
+    }
+
+    // version = 0x1 << 30
+    public entry fun clear_closed_position_v1_1<L, C, I, D>(
+        market: &mut Market<L>,
+        position_cap: PositionCap<C, I, D>,
+        ctx: &TxContext,
+    ) {
+        assert!(market.fun_mask & 0x40000000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
+
+        let PositionCap { id } = position_cap;
+
+        let position_name = PositionName<C, I, D> {
+            owner: tx_context::sender(ctx),
+            id: object::uid_to_inner(&id),
+        };
+        if (bag::contains(&market.positions, position_name)) {
+            let position: Position<C> = bag::remove(&mut market.positions, position_name);
+            position::destroy_position(position);
+        };
+
+        object::delete(id);
     }
 
     // === public read functions ===

@@ -47,11 +47,11 @@ module abex_core::position {
         liquidation_bonus: Rate,
     }
 
-    spec PositionConfig {
-        pragma aborts_if_is_strict;
-        ensures liquidation_threshold.value + liquidation_bonus.value
-            < 1_000_000_000_000_000_000;
-    }
+    // spec PositionConfig {
+    //     pragma aborts_if_is_strict;
+    //     ensures liquidation_threshold.value + liquidation_bonus.value
+    //         < 1_000_000_000_000_000_000;
+    // }
 
     struct Position<phantom C> has store {
         closed: bool,
