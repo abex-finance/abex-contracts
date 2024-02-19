@@ -1,12 +1,12 @@
 [package]
 name = "abex-core"
-version = "1.1.1"
+version = "1.1.2"
 published-at = "0xc64701f8adc8852586aef50cc834dfc01740fee871944946c659fb3747f8f5e7"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "mainnet-v1.13.2"
+rev = "mainnet-v1.18.1"
 override = true
 
 [dependencies.Pyth]

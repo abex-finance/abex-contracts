@@ -6,7 +6,7 @@ published-at = "0xffbe3b8f0fa46c54f3e6446ebc644136949beb6c7db45b9153e7cf7d53c9a7
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "mainnet-v1.13.2"
+rev = "mainnet-v1.18.1"
 
 [addresses]
 abex_dot = "0xffbe3b8f0fa46c54f3e6446ebc644136949beb6c7db45b9153e7cf7d53c9a7f9"
