@@ -150,6 +150,10 @@ module abex_core::market {
         liquidation_bonus: u128,
     }
 
+    struct RebateRateUpdated has copy, drop {
+        rebate_rate: Rate,
+    }
+
     // add in v1.1.2
     struct ReferralAdded has copy, drop {
         owner: address,
@@ -1924,6 +1928,18 @@ module abex_core::market {
         );
 
         position::destroy_position(position);
+    }
+
+    public entry fun set_rebate_rate_v1_1<L>(
+        _a: &AdminCap,
+        market: &mut Market<L>,
+        rebate_rate: u128,
+        _ctx: &TxContext,
+    ) {
+        market.rebate_rate = rate::from_raw(rebate_rate);
+
+        // emit rebate rate updated
+        event::emit(RebateRateUpdated { rebate_rate: market.rebate_rate });
     }
 
     // version = 0x1 << 19
