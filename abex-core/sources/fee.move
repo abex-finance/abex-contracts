@@ -1,15 +1,15 @@
 module abex_core::fee {
     use sui::object::{Self, UID};
     use sui::tx_context::TxContext;
-    use sui::dynamic_object_field::{Self};
+    use sui::balance::{Self, Balance};
+    use sui::coin::{Self, Coin};
+    use sui::transfer::{Self};
 
+    use abex_core::decimal::{Self};
     use abex_core::rate::Rate;
-    use abex_core::market::Market;
 
     friend abex_core::market;
-
-    /// The dynamic key for `FeeConfig`.
-    const FEE_CONFIG_DYNAMIC_KEY: u64 = 10001;
+    friend abex_core::orders;
 
     /// `FeeConfig` is a struct that contains the fee rate.
     struct FeeConfig has key, store {
@@ -24,58 +24,48 @@ module abex_core::fee {
     }
 
     /// Create a new `FeeConfig`.
-    public(friend) fun new_fee_config<L>(
-        market: &Market<L>,
+    public(friend) fun new_fee_config(
         fee_rate: Rate,
         fee_collector: address,
         ctx: &mut TxContext,
-    ) {
-        let fee_config = FeeConfig {
+    ): FeeConfig {
+        FeeConfig {
             id: object::new(ctx),
             fee_rate,
             fee_collector,
-        };
-        if (dynamic_object_field::contains(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        )) {
-            // remove the old fee config
-            let old_fee_config = dynamic_object_field::remove(
-                &mut market.id,
-                FEE_CONFIG_DYNAMIC_KEY,
-            );
-            // delete the old fee config
-            let FeeConfig { id, _: Rate, _: address, } = old_fee_config;
-            object::delete(id);
         }
-        dynamic_object_field::add(
-            &mut market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-            fee_config,
-        );
     }
 
-    /// Update the `FeeConfig`.
-    public(friend) fun update_fee_config<L>(
-        market: &Market<L>,
-        fee_rate: Rate,
-        fee_collector: address,
+    // using fee config split balance from market
+    // and transfer the coin to fee collector
+    public(friend) fun split_fee_from_balance<F>(
+        fee_config: &FeeConfig,
+        balance: &mut Balance<F>,
         ctx: &mut TxContext,
     ) {
-        let fee_config = dynamic_object_field::borrow_mut(
-            &mut market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
+        let collector = get_fee_collector(fee_config);
+        let fee_rate = get_fee_rate(fee_config);
+        let fee_value = decimal::mul_with_rate(
+            decimal::from_u64(balance::value(balance)),
+            fee_rate,
         );
-        fee_config.fee_rate = fee_rate;
-        fee_config.fee_collector = fee_collector;
+        let fee = balance::split(balance, decimal::ceil_u64(fee_value));
+        transfer::public_transfer(coin::from_balance(fee, ctx), collector);
     }
 
-    /// Borrow the `FeeConfig`.
-    public(friend) fun borrow_fee_config(market: &Market<L>): &FeeConfig {
-        dynamic_object_field::borrow(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        )
+    public(friend) fun split_fee_from_coin<F>(
+        fee_config: &FeeConfig,
+        coin: &mut Coin<F>,
+        ctx: &mut TxContext,
+    ) {
+        let collector = get_fee_collector(fee_config);
+        let fee_rate = get_fee_rate(fee_config);
+        let fee_value = decimal::mul_with_rate(
+            decimal::from_u64(coin::value(coin)),
+            fee_rate,
+        );
+        let fee = coin::split(coin, decimal::ceil_u64(fee_value), ctx);
+        transfer::public_transfer(fee, collector);
     }
 
     /// Get the fee rate.
