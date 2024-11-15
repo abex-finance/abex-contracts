@@ -139,6 +139,11 @@ module abex_core::market {
         liquidate_enabled: bool,
     }
 
+    struct FeeConfigUpdated<phantom L> has copy, drop {
+        fee_rate: Rate,
+        fee_collector: address,
+    }
+
     struct PositionConfigReplaced<phantom I, phantom D> has copy, drop {
         max_leverage: u64,
         min_holding_duration: u64,
@@ -489,6 +494,22 @@ module abex_core::market {
         event::emit(SymbolCreated<I, D> {});
     }
 
+    public entry fun set_fee_config<L>(
+        _a: &AdminCap,
+        market: &mut Market<L>,
+        fee_rate: Rate,
+        fee_collector: address,
+        ctx: &mut TxContext,
+    ) {
+        fee::new_fee_config(market, fee_rate, fee_collector, ctx);
+
+        // emit fee config updated
+        event::emit(FeeConfigUpdated<L> {
+            fee_rate,
+            fee_collector,
+        });
+    }
+
     public entry fun replace_symbol_feeder<L, I, D>(
         _a: &AdminCap,
         market: &mut Market<L>,
@@ -669,6 +690,9 @@ module abex_core::market {
             )
         };
 
+        // split fee from collateral
+        split_fee_from_market(market, &mut collateral, ctx);
+
         if (placed) {
             assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
@@ -812,6 +836,9 @@ module abex_core::market {
             pool::symbol_price_config(symbol),
             decimal::from_raw(limited_index_price),
         );
+
+        // split fee from collateral
+        split_fee_from_market(market, &mut collateral, ctx);
 
         // check if limit order can be placed
         let placed = if (long) {
@@ -1204,6 +1231,9 @@ module abex_core::market {
             timestamp,
         );
 
+        // split fee from order collateral
+        split_fee_from_market(market, &mut order.collateral, ctx);
+
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_open_position_order(
             order,
@@ -1323,6 +1353,9 @@ module abex_core::market {
             index_feeder,
             timestamp,
         );
+
+        // split fee from order collateral
+        split_fee_from_market(market, &mut order.collateral, ctx);
 
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_decrease_position_order(
@@ -1574,6 +1607,9 @@ module abex_core::market {
             type_name::get<S>() != type_name::get<D>(),
             ERR_SWAPPING_SAME_COINS,
         );
+
+        // split fee from source
+        split_fee_from_market(market, &mut source, ctx);
 
         let swapper = tx_context::sender(ctx);
         let source_amount = coin::value(&source);
@@ -1989,6 +2025,9 @@ module abex_core::market {
             decimal::lt(&agg_price::price_of(&index_price), &limited_index_price)
         };
 
+        // split fee from collateral
+        split_fee_from_market(market, &mut collateral, ctx);
+
         if (placed) {
             assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
@@ -2129,6 +2168,9 @@ module abex_core::market {
             timestamp,
         );
         let limited_index_price = decimal::from_raw(limited_index_price);
+
+        // split fee from collateral
+        split_fee_from_market(market, &mut fee, ctx);
 
         // check if limit order can be placed
         let placed = if (long) {
@@ -2418,6 +2460,8 @@ module abex_core::market {
             timestamp,
         );
 
+        // split fee from order collateral
+        split_fee_from_market(market, &mut order.collateral, ctx);
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_open_position_order_v1_1(
             order,
@@ -2537,6 +2581,9 @@ module abex_core::market {
             index_feeder,
             timestamp,
         );
+
+        // split fee from order collateral
+        split_fee_from_market(market, &mut order.collateral, ctx);
 
         let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_decrease_position_order_v1_1(
@@ -2809,6 +2856,48 @@ module abex_core::market {
                 ERR_INVALID_DIRECTION,
             );
             false
+        }
+    }
+
+    /// === fee_config functions ===
+
+    // using fee config split balance from market
+    // and transfer the coin to fee collector
+    fun split_fee_from_balance<L, F>(
+        market: &mut Market<L>,
+        balance: &mut Balance<F>,
+        ctx: &mut TxContext,
+    ) {
+        let fee_config = fee::borrow_fee_config(market);
+        let collector = fee::get_fee_collector(fee_config);   
+        let fee_rate = fee::get_fee_rate(fee_config);
+        let fee_value = decimal::mul_with_rate(balance::value(&balance), fee_rate);
+        let fee = balance::split(balance, fee_value);
+        transfer::transfer(coin::from_balance(fee, ctx), collector);
+    }
+
+    fun split_fee_from_coin<L, F>(
+        market: &mut Market<L>,
+        coin: &mut Coin<F>,
+        ctx: &mut TxContext,
+    ) {
+        let fee_config = fee::borrow_fee_config(market);
+        let collector = fee::get_fee_collector(fee_config);   
+        let fee_rate = fee::get_fee_rate(fee_config);
+        let fee_value = decimal::mul_with_rate(coin::value(coin), fee_rate);
+        let fee = coin::split(coin, fee_value, ctx);
+        transfer::transfer(fee, collector);
+    }
+
+    fun split_fee_from_market<L, F, T>(
+        market: &mut Market<L>,
+        value: &mut T,
+        ctx: &mut TxContext,
+    ) {
+        if (is_coin<T>()) {
+            split_fee_from_coin(market, &mut value, ctx);
+        } else {
+            split_fee_from_balance(market, &mut value, ctx);
         }
     }
 }
