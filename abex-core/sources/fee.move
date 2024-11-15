@@ -45,7 +45,7 @@ module abex_core::fee {
                 FEE_CONFIG_DYNAMIC_KEY,
             );
             // delete the old fee config
-            let FeeConfig { id, .. } = old_fee_config;
+            let FeeConfig { id, _: Rate, _: address, } = old_fee_config;
             object::delete(id);
         }
         dynamic_object_field::add(

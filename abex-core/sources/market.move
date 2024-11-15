@@ -33,7 +33,7 @@ module abex_core::market {
         OpenPositionOrderV1_1, DecreasePositionOrderV1_1,
     };
     use abex_core::pool::{Self, Vault, Symbol};
-
+    use abex_core::fee::{Self};
     friend abex_core::alp;
 
     // === Objects ===
@@ -140,7 +140,7 @@ module abex_core::market {
     }
 
     struct FeeConfigUpdated<phantom L> has copy, drop {
-        fee_rate: Rate,
+        fee_rate: u128,
         fee_collector: address,
     }
 
@@ -497,11 +497,11 @@ module abex_core::market {
     public entry fun set_fee_config<L>(
         _a: &AdminCap,
         market: &mut Market<L>,
-        fee_rate: Rate,
+        fee_rate: u128,
         fee_collector: address,
         ctx: &mut TxContext,
     ) {
-        fee::new_fee_config(market, fee_rate, fee_collector, ctx);
+        fee::new_fee_config<L>(market, rate::from_raw(fee_rate), fee_collector, ctx);
 
         // emit fee config updated
         event::emit(FeeConfigUpdated<L> {
@@ -1610,6 +1610,11 @@ module abex_core::market {
 
         // split fee from source
         split_fee_from_market(market, &mut source, ctx);
+        // min_amount_out is the amount of destination token after fee
+        // so we need to subtract the fee value from min_amount_out
+        let fee_config = fee::borrow_fee_config(market);
+        let fee_rate = fee::get_fee_rate(fee_config);
+        let min_amount_out_after_fee = decimal::sub(min_amount_out, decimal::mul_with_rate(min_amount_out, fee_rate));
 
         let swapper = tx_context::sender(ctx);
         let source_amount = coin::value(&source);
@@ -1636,7 +1641,7 @@ module abex_core::market {
             bag::borrow_mut(&mut market.vaults, VaultName<D> {}),
             model,
             &dest_price,
-            min_amount_out,
+            min_amount_out_after_fee,
             swap_value,
             dest_vault_value,
             total_vaults_value,
@@ -2895,9 +2900,9 @@ module abex_core::market {
         ctx: &mut TxContext,
     ) {
         if (is_coin<T>()) {
-            split_fee_from_coin(market, &mut value, ctx);
+            split_fee_from_coin<L, F>(market, &mut value, ctx);
         } else {
-            split_fee_from_balance(market, &mut value, ctx);
+            split_fee_from_balance<L, F>(market, &mut value, ctx);
         }
     }
 }
