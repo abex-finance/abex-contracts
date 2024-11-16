@@ -1,7 +1,6 @@
 module abex_core::fee {
     use sui::object::{Self, UID};
     use sui::tx_context::TxContext;
-    use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::transfer::{Self};
 
@@ -38,21 +37,6 @@ module abex_core::fee {
 
     // using fee config split balance from market
     // and transfer the coin to fee collector
-    public(friend) fun split_fee_from_balance<F>(
-        fee_config: &FeeConfig,
-        balance: &mut Balance<F>,
-        ctx: &mut TxContext,
-    ) {
-        let collector = get_fee_collector(fee_config);
-        let fee_rate = get_fee_rate(fee_config);
-        let fee_value = decimal::mul_with_rate(
-            decimal::from_u64(balance::value(balance)),
-            fee_rate,
-        );
-        let fee = balance::split(balance, decimal::ceil_u64(fee_value));
-        transfer::public_transfer(coin::from_balance(fee, ctx), collector);
-    }
-
     public(friend) fun split_fee_from_coin<F>(
         fee_config: &FeeConfig,
         coin: &mut Coin<F>,

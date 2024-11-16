@@ -673,7 +673,7 @@ module abex_core::market {
             &market.id,
             FEE_CONFIG_DYNAMIC_KEY,
         );
-        fee::split_fee_from_coin(fee_config, &mut collateral, ctx);
+        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
 
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,
@@ -826,6 +826,11 @@ module abex_core::market {
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
+        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
+            &market.id,
+            FEE_CONFIG_DYNAMIC_KEY,
+        );
+        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
 
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,
@@ -934,11 +939,6 @@ module abex_core::market {
             let (to_trader, rebate, event) =
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
-            let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-                &market.id,
-                FEE_CONFIG_DYNAMIC_KEY,
-            );
-            fee::split_fee_from_balance(fee_config, &mut to_trader, ctx);
             pay_from_balance(to_trader, owner, ctx);
             pay_from_balance(rebate, referrer, ctx);
 
@@ -1383,11 +1383,6 @@ module abex_core::market {
             let (to_trader, rebate, event) =
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
-            let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-                &market.id,
-                FEE_CONFIG_DYNAMIC_KEY,
-            );
-            fee::split_fee_from_balance(fee_config, &mut to_trader, ctx);
             pay_from_balance(to_trader, owner, ctx);
             pay_from_balance(rebate, referrer, ctx);
 
@@ -1620,20 +1615,6 @@ module abex_core::market {
             ERR_SWAPPING_SAME_COINS,
         );
 
-        // split fee from source
-        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        );
-        let fee_rate = fee::get_fee_rate(fee_config);
-        let calculated_fee = decimal::mul_with_rate(decimal::from_u64(coin::value(&source)), fee_rate);
-        let fee = coin::split(&mut source, decimal::ceil_u64(calculated_fee), ctx);
-        pay_from_balance(coin::into_balance(fee), fee::get_fee_collector(fee_config), ctx);
-
-        // min_amount_out is the amount of destination token after fee
-        // so we need to subtract the fee value from min_amount_out
-        let min_amount_out_after_fee = min_amount_out - decimal::ceil_u64(decimal::mul_with_rate(decimal::from_u64(min_amount_out), fee_rate));
-
         let swapper = tx_context::sender(ctx);
         let source_amount = coin::value(&source);
         let (handled_vaults, total_weight, total_vaults_value) =
@@ -1659,7 +1640,7 @@ module abex_core::market {
             bag::borrow_mut(&mut market.vaults, VaultName<D> {}),
             model,
             &dest_price,
-            min_amount_out_after_fee,
+            min_amount_out,
             swap_value,
             dest_vault_value,
             total_vaults_value,
@@ -1959,12 +1940,7 @@ module abex_core::market {
             
         let (to_trader, rebate, event) =
             pool::unwrap_decrease_position_result(option::destroy_some(result));
-
-        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        );
-        fee::split_fee_from_balance(fee_config, &mut to_trader, ctx);
+        
         pay_from_balance(to_trader, owner, ctx);
         pay_from_balance(rebate, referrer, ctx);
 
@@ -2032,6 +2008,11 @@ module abex_core::market {
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
+        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
+            &market.id,
+            FEE_CONFIG_DYNAMIC_KEY,
+        );
+        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
 
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,
@@ -2053,12 +2034,6 @@ module abex_core::market {
             decimal::lt(&agg_price::price_of(&index_price), &limited_index_price)
         };
 
-        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        );
-        fee::split_fee_from_coin(fee_config, &mut collateral, ctx);
-        
         if (placed) {
             assert!(trade_level < 2, ERR_CAN_NOT_CREATE_ORDER);
 
@@ -2184,6 +2159,12 @@ module abex_core::market {
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
 
+        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
+            &market.id,
+            FEE_CONFIG_DYNAMIC_KEY,
+        );  
+        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
+
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,
             SymbolName<I, D> {},
@@ -2282,11 +2263,6 @@ module abex_core::market {
             let (to_trader, rebate, event) =
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
-            let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-                &market.id,
-                FEE_CONFIG_DYNAMIC_KEY,
-            );
-            fee::split_fee_from_balance(fee_config, &mut to_trader, ctx);
             pay_from_balance(to_trader, owner, ctx);
             pay_from_balance(rebate, referrer, ctx);
 
@@ -2634,11 +2610,6 @@ module abex_core::market {
             let (to_trader, rebate, event) =
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
-            let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-                &market.id,
-                FEE_CONFIG_DYNAMIC_KEY,
-            );
-            fee::split_fee_from_balance(fee_config, &mut to_trader, ctx);
             pay_from_balance(to_trader, owner, ctx);
             pay_from_balance(rebate, referrer, ctx);
 
