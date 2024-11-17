@@ -272,6 +272,15 @@ module abex_core::market {
         }
     }
 
+    fun pay_fee_from_coin<F>(
+        id: &UID,
+        coin: &mut Coin<F>,
+        ctx: &mut TxContext,
+    ) {
+        let fee_config: &FeeConfig = dynamic_object_field::borrow(id, FEE_CONFIG_DYNAMIC_KEY);
+        fee::pay_fee(fee_config, coin, ctx);
+    }
+
     fun get_referral_data(
         referrals: &Table<address, Referral>,
         owner: address
@@ -505,6 +514,16 @@ module abex_core::market {
         fee_collector: address,
         ctx: &mut TxContext,
     ) {
+        // delete old fee config if exists
+        if (dynamic_object_field::exists_(&market.id, FEE_CONFIG_DYNAMIC_KEY)) {
+            let old_fee_config: FeeConfig = dynamic_object_field::remove(
+                &mut market.id,
+                FEE_CONFIG_DYNAMIC_KEY,
+            );
+            fee::delete_fee_config(old_fee_config);
+        };
+
+        // create new fee config
         let fee_config = fee::new_fee_config(rate::from_raw(fee_rate), fee_collector, ctx);
         dynamic_object_field::add(
             &mut market.id,
@@ -665,15 +684,12 @@ module abex_core::market {
         assert!(market.fun_mask & 0x2 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
+        pay_fee_from_coin(&market.id, &mut fee, ctx);
+
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
-        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        );
-        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
 
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,
@@ -822,15 +838,12 @@ module abex_core::market {
         assert!(market.fun_mask & 0x4 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
+        pay_fee_from_coin(&market.id, &mut fee, ctx);
+        
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
-        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        );
-        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
 
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,
@@ -1940,7 +1953,7 @@ module abex_core::market {
             
         let (to_trader, rebate, event) =
             pool::unwrap_decrease_position_result(option::destroy_some(result));
-        
+
         pay_from_balance(to_trader, owner, ctx);
         pay_from_balance(rebate, referrer, ctx);
 
@@ -2004,16 +2017,13 @@ module abex_core::market {
         assert!(market.fun_mask & 0x80000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
+        pay_fee_from_coin(&market.id, &mut fee, ctx);
+
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
-        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        );
-        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
-
+ 
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,
             SymbolName<I, D> {},
@@ -2043,7 +2053,6 @@ module abex_core::market {
                 owner,
                 position_id: option::none(),
             };
-
             let (order, event) = orders::new_open_position_order_v1_1(
                 timestamp,
                 open_amount,
@@ -2087,7 +2096,6 @@ module abex_core::market {
                 id: object::uid_to_inner(&position_id),
                 owner,
             };
-            
             let collateral = coin::into_balance(collateral);
             let (code, result, _) = pool::open_position(
                 vault,
@@ -2154,16 +2162,12 @@ module abex_core::market {
         assert!(market.fun_mask & 0x100000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
+        pay_fee_from_coin(&market.id, &mut fee, ctx);
+
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
         let long = parse_direction<D>();
-
-        let fee_config = dynamic_object_field::borrow<u64,FeeConfig>(
-            &market.id,
-            FEE_CONFIG_DYNAMIC_KEY,
-        );  
-        fee::split_fee_from_coin(fee_config, &mut fee, ctx);
 
         let symbol: &mut Symbol = bag::borrow_mut(
             &mut market.symbols,

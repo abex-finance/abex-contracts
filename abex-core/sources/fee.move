@@ -8,7 +8,6 @@ module abex_core::fee {
     use abex_core::rate::Rate;
 
     friend abex_core::market;
-    friend abex_core::orders;
 
     /// `FeeConfig` is a struct that contains the fee rate.
     struct FeeConfig has key, store {
@@ -35,9 +34,17 @@ module abex_core::fee {
         }
     }
 
+    /// Delete a `FeeConfig`.
+    public(friend) fun delete_fee_config(
+        fee_config: FeeConfig,
+    ) {
+        let FeeConfig { id: id, fee_rate: _, fee_collector: _ } = fee_config;
+        object::delete(id);
+    }
+
     // using fee config split balance from market
     // and transfer the coin to fee collector
-    public(friend) fun split_fee_from_coin<F>(
+    public(friend) fun pay_fee<F>(
         fee_config: &FeeConfig,
         coin: &mut Coin<F>,
         ctx: &mut TxContext,
