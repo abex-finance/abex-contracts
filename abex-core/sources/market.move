@@ -35,6 +35,7 @@ module abex_core::market {
     };
     use abex_core::pool::{Self, Vault, Symbol};
     use abex_core::fee::{Self, FeeConfig};
+
     friend abex_core::alp;
 
     // === Objects ===
