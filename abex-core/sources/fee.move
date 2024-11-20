@@ -3,11 +3,15 @@ module abex_core::fee {
     use sui::tx_context::TxContext;
     use sui::coin::{Self, Coin};
     use sui::transfer::{Self};
+    use sui::event::{Self};
 
     use abex_core::decimal::{Self};
-    use abex_core::rate::Rate;
+    use abex_core::rate::{Self, Rate};
 
     friend abex_core::market;
+
+    const ERR_INVALID_FEE_RATE: u64 = 1001;
+    const ERR_INVALID_FEE_COLLECTOR: u64 = 1002;
 
     /// `FeeConfig` is a struct that contains the fee rate.
     struct FeeConfig has key, store {
@@ -21,12 +25,27 @@ module abex_core::fee {
         fee_collector: address,
     }
 
+    /// `FeeCollected` is a struct that contains the fee collector, amount, and fee rate.
+    struct FeeCollected has copy, drop {
+        /// `collector` is the address that collects the fee.
+        collector: address,
+        /// `amount` is the amount of fee collected.
+        amount: u64,
+        /// `fee_rate` is the fee rate.
+        fee_rate: Rate,
+    }
+
     /// Create a new `FeeConfig`.
     public(friend) fun new_fee_config(
         fee_rate: Rate,
         fee_collector: address,
         ctx: &mut TxContext,
     ): FeeConfig {
+        let one = rate::one();
+        let zero = rate::zero();
+        assert!(rate::lt(&fee_rate, &one), ERR_INVALID_FEE_RATE);
+        assert!(rate::gt(&fee_rate, &zero), ERR_INVALID_FEE_RATE);
+        assert!(fee_collector != @0x0, ERR_INVALID_FEE_COLLECTOR);
         FeeConfig {
             id: object::new(ctx),
             fee_rate,
@@ -42,21 +61,31 @@ module abex_core::fee {
         object::delete(id);
     }
 
+    /// Estimate the fee amount.
+    public fun estimate_fee(fee_config: &FeeConfig, amount: u64): u64 {
+        decimal::ceil_u64(decimal::mul_with_rate(
+            decimal::from_raw((amount as u256)),
+            get_fee_rate(fee_config),
+        ))
+    }
+
     // using fee config split balance from market
     // and transfer the coin to fee collector
     public(friend) fun pay_fee<F>(
         fee_config: &FeeConfig,
-        coin: &mut Coin<F>,
+        fee_coin: &mut Coin<F>,
         ctx: &mut TxContext,
     ) {
         let collector = get_fee_collector(fee_config);
-        let fee_rate = get_fee_rate(fee_config);
-        let fee_value = decimal::mul_with_rate(
-            decimal::from_u64(coin::value(coin)),
-            fee_rate,
-        );
-        let fee = coin::split(coin, decimal::ceil_u64(fee_value), ctx);
-        transfer::public_transfer(fee, collector);
+        assert!(collector != @0x0, ERR_INVALID_FEE_COLLECTOR);
+        let fee_value = estimate_fee(fee_config, coin::value(fee_coin));
+        let splited_fee_coin = coin::split(fee_coin, fee_value, ctx);
+        transfer::public_transfer(splited_fee_coin, collector);
+        event::emit(FeeCollected {
+            collector,
+            amount: fee_value,
+            fee_rate: get_fee_rate(fee_config),
+        });
     }
 
     /// Get the fee rate.

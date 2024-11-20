@@ -142,7 +142,7 @@ module abex_core::market {
     }
 
     struct FeeConfigUpdated<phantom L> has copy, drop {
-        fee_rate: u128,
+        fee_rate_percent: u8,
         fee_collector: address,
     }
 
@@ -511,7 +511,7 @@ module abex_core::market {
     public entry fun set_fee_config<L>(
         _a: &AdminCap,
         market: &mut Market<L>,
-        fee_rate: u128,
+        fee_rate_percent: u8,
         fee_collector: address,
         ctx: &mut TxContext,
     ) {
@@ -525,7 +525,11 @@ module abex_core::market {
         };
 
         // create new fee config
-        let fee_config = fee::new_fee_config(rate::from_raw(fee_rate), fee_collector, ctx);
+        let fee_config = fee::new_fee_config(
+            rate::from_percent(fee_rate_percent),
+            fee_collector,
+            ctx,
+        );
         dynamic_object_field::add(
             &mut market.id,
             FEE_CONFIG_DYNAMIC_KEY,
@@ -534,7 +538,7 @@ module abex_core::market {
 
         // emit fee config updated
         event::emit(FeeConfigUpdated<L> {
-            fee_rate,
+            fee_rate_percent,
             fee_collector,
         });
     }

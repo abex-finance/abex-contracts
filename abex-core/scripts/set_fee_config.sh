@@ -2,7 +2,7 @@
 
 read -p "Import the env name (default: mainnet): " env_name
 read -p "Import gas budget (default: 1000000000): " gas_budget
-read -p "Import the fee rate (default: 100000000000000000): " fee_rate
+read -p "Import the fee rate percent (default: 10%): " fee_rate_percent
 read -p "Import the fee collector: " fee_collector
 
 if [ -z "$env_name" ]; then
@@ -11,8 +11,8 @@ fi
 if [ -z "$gas_budget" ]; then
        gas_budget=1000000000
 fi
-if [ -z "$fee_rate" ]; then
-       fee_rate=100000000000000000
+if [ -z "$fee_rate_percent" ]; then
+       fee_rate_percent=10
 fi
 if [ -z "$fee_collector" ]; then
        fee_collector="0x5d18e6f886f43e48375f6d8beab6c740b9f6f1e7382eda22ea82990a12df497b"
@@ -35,6 +35,6 @@ log=`sui client --client.config $config \
               --type-args $package::alp::ALP \
               --args ${admin_cap} \
                      ${market} \
-                     ${fee_rate} \
+                     ${fee_rate_percent} \
                      ${fee_collector}`
 echo "$log"
