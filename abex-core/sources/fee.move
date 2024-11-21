@@ -9,6 +9,8 @@ module abex_core::fee {
     use abex_core::rate::{Self, Rate};
 
     friend abex_core::market;
+    friend abex_core::pool;
+    friend abex_core::orders;
 
     const ERR_INVALID_FEE_RATE: u64 = 1001;
     const ERR_INVALID_FEE_COLLECTOR: u64 = 1002;
@@ -31,6 +33,18 @@ module abex_core::fee {
         collector: address,
         /// `amount` is the amount of fee collected.
         amount: u64,
+        /// `fee_rate` is the fee rate.
+        fee_rate: Rate,
+    }
+
+    /// `FeeCollected` is a struct that contains the fee collector, amount, and fee rate.
+    struct FeeCollectedV2 has copy, drop {
+        /// `collector` is the address that collects the fee.
+        collector: address,
+        /// `fee_amount` is the amount of fee collected.
+        fee_amount: u64,
+        /// `coin_amount` is the amount of coin collected.
+        coin_amount: u64,
         /// `fee_rate` is the fee rate.
         fee_rate: Rate,
     }
@@ -78,14 +92,31 @@ module abex_core::fee {
     ) {
         let collector = get_fee_collector(fee_config);
         assert!(collector != @0x0, ERR_INVALID_FEE_COLLECTOR);
-        let fee_value = estimate_fee(fee_config, coin::value(fee_coin));
-        let splited_fee_coin = coin::split(fee_coin, fee_value, ctx);
-        transfer::public_transfer(splited_fee_coin, collector);
-        event::emit(FeeCollected {
+        let coin_value = coin::value(fee_coin);
+        let fee_value = estimate_fee(fee_config, coin_value);
+        if (fee_value > 0) {
+            let splited_fee_coin = coin::split(fee_coin, fee_value, ctx);
+            if (coin::value(&splited_fee_coin) > 0) {
+                transfer::public_transfer(splited_fee_coin, collector);
+            } else {
+                coin::destroy_zero(splited_fee_coin);
+            }
+        };
+        event::emit(FeeCollectedV2 {
             collector,
-            amount: fee_value,
+            fee_amount: fee_value,
+            coin_amount: coin_value,
             fee_rate: get_fee_rate(fee_config),
         });
+    }
+
+    public(friend) fun pay_fee_directly<F>(
+        fee_config: &FeeConfig,
+        fee_coin: Coin<F>
+    ) {
+        let collector = get_fee_collector(fee_config);
+        assert!(collector != @0x0, ERR_INVALID_FEE_COLLECTOR);
+        transfer::public_transfer(fee_coin, collector);
     }
 
     /// Get the fee rate.

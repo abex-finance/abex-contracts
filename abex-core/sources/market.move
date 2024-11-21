@@ -667,6 +667,17 @@ module abex_core::market {
         table::add(&mut market.referrals, owner, referral);
     }
 
+    public fun estimate_fee<L>(
+        market: &Market<L>,
+        amount: u64,
+    ): u64 {
+        let fee_config: &FeeConfig = dynamic_object_field::borrow(
+            &market.id,
+            FEE_CONFIG_DYNAMIC_KEY,
+        );
+        fee::estimate_fee(fee_config, amount)
+    }
+
     // version = 0x1 << 1
     #[lint_allow(self_transfer)]
     public entry fun open_position<L, C, I, D, F>(
