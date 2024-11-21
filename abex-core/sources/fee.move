@@ -116,7 +116,17 @@ module abex_core::fee {
     ) {
         let collector = get_fee_collector(fee_config);
         assert!(collector != @0x0, ERR_INVALID_FEE_COLLECTOR);
-        transfer::public_transfer(fee_coin, collector);
+        let fee_amount = coin::value(&fee_coin);
+        if (fee_amount > 0) {
+            transfer::public_transfer(fee_coin, collector);
+        } else {
+            coin::destroy_zero(fee_coin);
+        };
+        event::emit(FeeCollected {
+            collector,
+            amount: fee_amount,
+            fee_rate: get_fee_rate(fee_config),
+        });
     }
 
     /// Get the fee rate.

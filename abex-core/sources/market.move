@@ -273,13 +273,22 @@ module abex_core::market {
         }
     }
 
-    fun pay_fee_from_coin<F>(
+    fun pay_fee_split_from_referral<F>(
         id: &UID,
-        coin: &mut Coin<F>,
+        referrel: address,
+        balance: Balance<F>,
         ctx: &mut TxContext,
     ) {
         let fee_config: &FeeConfig = dynamic_object_field::borrow(id, FEE_CONFIG_DYNAMIC_KEY);
-        fee::pay_fee(fee_config, coin, ctx);
+        let fee_collector = fee::get_fee_collector(fee_config);
+        if (referrel == fee_collector) {
+            pay_from_balance(balance, fee_collector, ctx);
+        } else {
+            // split 1/4 to referrer, 3/4 to fee collector
+            let split_amount = balance::value(&balance) / 4;
+            pay_from_balance(balance::split(&mut balance, split_amount), referrel, ctx);
+            fee::pay_fee_directly(fee_config, coin::from_balance(balance, ctx));
+        };
     }
 
     fun get_referral_data(
@@ -291,6 +300,21 @@ module abex_core::market {
             (referral::get_rebate_rate(referral), referral::get_referrer(referral))
         } else {
             (rate::zero(), @0x0)
+        }
+    }
+
+    fun get_referral_data_v1(
+        id: &UID,
+        referrals: &Table<address, Referral>,
+        owner: address,
+    ): (Rate, address) {
+        let (rebate_rate, referrer) = get_referral_data(referrals, owner);
+        let fee_config: &FeeConfig = dynamic_object_field::borrow(id, FEE_CONFIG_DYNAMIC_KEY);
+        let fee_rate = fee::get_fee_rate(fee_config);
+        if (referrer == @0x0) {
+            (rate::add(rebate_rate, fee_rate), fee::get_fee_collector(fee_config))
+        } else {
+            (rate::add(rebate_rate, fee_rate), referrer)
         }
     }
 
@@ -700,8 +724,6 @@ module abex_core::market {
         assert!(market.fun_mask & 0x2 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
-        pay_fee_from_coin(&market.id, &mut fee, ctx);
-
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -782,7 +804,7 @@ module abex_core::market {
                 timestamp,
             );
 
-            let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+            let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
             let position_id = object::new(ctx);
             let position_name = PositionName<C, I, D> {
                 id: object::uid_to_inner(&position_id),
@@ -820,7 +842,7 @@ module abex_core::market {
                 owner,
             );
             
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             transfer::public_transfer(fee, owner);
 
@@ -854,8 +876,6 @@ module abex_core::market {
         assert!(market.fun_mask & 0x4 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
 
-        pay_fee_from_coin(&market.id, &mut fee, ctx);
-        
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
         let lp_supply_amount = lp_supply_amount(market);
@@ -946,7 +966,7 @@ module abex_core::market {
                 timestamp,
             );
 
-            let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+            let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
             let (code, result, _) = pool::decrease_position(
                 vault,
                 symbol,
@@ -969,7 +989,7 @@ module abex_core::market {
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
             pay_from_balance(to_trader, owner, ctx);
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             transfer::public_transfer(fee, owner);
 
@@ -1273,7 +1293,7 @@ module abex_core::market {
             timestamp,
         );
 
-        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_open_position_order(
             order,
             vault,
@@ -1304,7 +1324,7 @@ module abex_core::market {
                 owner,
             );
 
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             // emit order executed and open opened
             event::emit(OrderExecuted {
@@ -1393,7 +1413,7 @@ module abex_core::market {
             timestamp,
         );
 
-        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_decrease_position_order(
             order,
             vault,
@@ -1413,7 +1433,7 @@ module abex_core::market {
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
             pay_from_balance(to_trader, owner, ctx);
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             // emit order executed and position decreased
             event::emit(OrderExecuted {
@@ -1948,7 +1968,7 @@ module abex_core::market {
             timestamp,
         );
 
-        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
         let (code, result, _) = pool::decrease_position(
             vault,
             symbol,
@@ -1971,7 +1991,7 @@ module abex_core::market {
             pool::unwrap_decrease_position_result(option::destroy_some(result));
 
         pay_from_balance(to_trader, owner, ctx);
-        pay_from_balance(rebate, referrer, ctx);
+        pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
         // emit decrease position
         event::emit(PositionClaimed {
@@ -2032,8 +2052,6 @@ module abex_core::market {
     ) {
         assert!(market.fun_mask & 0x80000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
-
-        pay_fee_from_coin(&market.id, &mut fee, ctx);
 
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
@@ -2106,7 +2124,7 @@ module abex_core::market {
                 timestamp,
             );
 
-            let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+            let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
             let position_id = object::new(ctx);
             let position_name = PositionName<C, I, D> {
                 id: object::uid_to_inner(&position_id),
@@ -2144,7 +2162,7 @@ module abex_core::market {
                 owner,
             );
             
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             transfer::public_transfer(fee, owner);
 
@@ -2177,8 +2195,6 @@ module abex_core::market {
     ) {
         assert!(market.fun_mask & 0x100000 == 0, ERR_FUNCTION_VERSION_EXPIRED);
         assert!(!market.vaults_locked && !market.symbols_locked, ERR_MARKET_ALREADY_LOCKED);
-
-        pay_fee_from_coin(&market.id, &mut fee, ctx);
 
         let timestamp = clock::timestamp_ms(clock) / 1000;
         let owner = tx_context::sender(ctx);
@@ -2261,7 +2277,7 @@ module abex_core::market {
                 timestamp,
             );
 
-            let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+            let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
             let (code, result, _) = pool::decrease_position(
                 vault,
                 symbol,
@@ -2284,7 +2300,7 @@ module abex_core::market {
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
             pay_from_balance(to_trader, owner, ctx);
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             transfer::public_transfer(fee, owner);
 
@@ -2491,7 +2507,7 @@ module abex_core::market {
             timestamp,
         );
 
-        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_open_position_order_v1_1(
             order,
             vault,
@@ -2522,7 +2538,7 @@ module abex_core::market {
                 owner,
             );
 
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             // emit order executed and open opened
             event::emit(OrderExecuted {
@@ -2611,7 +2627,7 @@ module abex_core::market {
             timestamp,
         );
 
-        let (rebate_rate, referrer) = get_referral_data(&market.referrals, owner);
+        let (rebate_rate, referrer) = get_referral_data_v1(&market.id, &market.referrals, owner);
         let (code, result, failure, fee) = orders::execute_decrease_position_order_v1_1(
             order,
             vault,
@@ -2631,7 +2647,7 @@ module abex_core::market {
                 pool::unwrap_decrease_position_result(option::destroy_some(result));
 
             pay_from_balance(to_trader, owner, ctx);
-            pay_from_balance(rebate, referrer, ctx);
+            pay_fee_split_from_referral(&market.id, referrer, rebate, ctx);
 
             // emit order executed and position decreased
             event::emit(OrderExecuted {
