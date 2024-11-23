@@ -15,7 +15,6 @@ if [ -z "$env_name" ]; then
        env_name="mainnet"
 fi
 deployments="../../deployments-$env_name.json"
-config="/root/.sui/sui_config/$env_name-client.yaml"
 
 if [ -z "$direction" ]; then
        direction="LONG"
@@ -37,8 +36,7 @@ market=`cat $deployments | jq -r ".abex_core.market"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
 
 # set symbol status
-log=`sui client --client.config $config \
-       call --gas-budget ${gas_budget} \
+log=`sui client call --gas-budget ${gas_budget} \
               --package ${package_v1_1_1} \
               --module market \
               --function set_symbol_status \
