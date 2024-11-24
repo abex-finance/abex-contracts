@@ -473,6 +473,18 @@ module abex_core::market {
         );
     }
 
+    public entry fun replace_vault_weight<L, C>(
+        _a: &AdminCap,
+        market: &mut Market<L>,
+        weight: u256,
+    ) {
+        let vault: &mut Vault<C> = bag::borrow_mut(
+            &mut market.vaults,
+            VaultName<C> {},
+        );
+        pool::set_vault_weight(vault, weight);
+    }
+
     public entry fun add_new_symbol<L, I, D>(
         _a: &AdminCap,
         market: &mut Market<L>,

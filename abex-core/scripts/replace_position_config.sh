@@ -20,7 +20,6 @@ if [ -z "$env_name" ]; then
        env_name="mainnet"
 fi
 deployments="../../deployments-$env_name.json"
-config="/root/.sui/sui_config/$env_name-client.yaml"
 
 if [ -z "$direction" ]; then
        direction="LONG"
@@ -51,16 +50,15 @@ if [ -z "${liq_bonus}" ]; then
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
-package_v1_1_1=`cat $deployments | jq -r ".abex_core.package_v1_1_1"`
+package_v1_1_6=`cat $deployments | jq -r ".abex_core.package_v1_1_6"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
-declare -l symbol=${direction}_${coin}
+symbol=$(echo "${direction}_${coin}" | tr '[:upper:]' '[:lower:]')
 position_config=`cat $deployments | jq -r ".abex_core.symbols.$symbol.position_config"`
 
 # replace position config
-log=`sui client --client.config $config \
-       call --gas-budget ${gas_budget} \
-              --package ${package_v1_1_1} \
+log=`sui client call --gas-budget ${gas_budget} \
+              --package ${package_v1_1_6} \
               --module market \
               --function replace_position_config \
               --type-args ${coin_module} $package::market::$direction \

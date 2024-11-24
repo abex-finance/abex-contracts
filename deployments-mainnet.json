@@ -8,6 +8,7 @@
     "package_v1_1_4": "0xeeb83a8daaf2209d300f1db48ccae20d8c772f850c78a34f650ab9193a421762",
     "package_v1_1_5": "0x840cc977a6583f362bf2eff3534b2abc9e8fb05049d5c185f8a98288242fa52f",
     "package_v1_1_6": "0xda8e1ebbb1789a1958d74d8186b573512741804d5ad8a3517b2337bfbf977ade",
+    "package_v1_1_7": "0xab136e8d462e756fd3cb07151af5f4130546f742a2d96551357fe1282b0049ed",
     "upgrade_cap": "0x2b117061b408979881624c3724d8316c976308396e38d971164f2a65087bc726",
     "admin_cap": "0x7806e23aa5b39b768a10bbe440438e85ede1943675145c26f96706fe7cd3234c",
     "market": "0x7705d4670e7ef4623d6392888f73f6773b5f0218b6cb1486a4be238692a58bca",
@@ -18,16 +19,24 @@
     "positions_parent": "0x251910096bd975afdb4413a3b4c0a158b0097c0c4cd242e1a24db5882011cac2",
     "vaults": {
       "sui": {
-        "weight": "100000000000000000",
+        "weight": "250000000000000000",
         "reserving_fee_model": "0x399c8e85198dfa743d30510bd1aee177e7ad87e760b1a597834817c0b63b738a"
       },
       "usdc": {
-        "weight": "600000000000000000",
+        "weight": "500000000000000000",
         "reserving_fee_model": "0x317ecf514961f6a54c24004fbe67851411dfa4401698b1e1b9973ff1f2dbb349"
       },
       "usdt": {
-        "weight": "300000000000000000",
+        "weight": "100000000000000000",
         "reserving_fee_model": "0x64beb67b9d62cf4c85ef80afe780e179edc536aa831d092186cbfec69cad6f24"
+      },
+      "cetus": {
+        "weight": "50000000000000000",
+        "reserving_fee_model": "0x9abb5b0de1f50869570a6b16c685d18acb9ecf627e762ef477df955bca88605f"
+      },
+      "hasui": {
+        "weight": "100000000000000000",
+        "reserving_fee_model": "0x695ea5b034ad7296cdf615102d7495c07982d50d78b8d174f0e08298c80a47fb"
       }
     },
     "symbols": {
@@ -313,7 +322,7 @@
       "pepe": "0x4216768d1e645dd1c0ee15f118b99935362adecfaf305aeb13690f14105be158",
       "wld": "0xc7266525878c97d0531391dedb8c4c4c13c41939e28cd36f89324d3caae8e642",
       "hippo": "0x7faab480b0ec6bfdcb2732dd9f214781b9a30c8d30032d2b25d65a217e1645ba",
-      "afsui": "0xd779885c5246357e24cbde7348f2d81f756d9650975c02d81346b15d8b557ebf"
+      "hasui": "0x4c1d831576b60fec657e0c310943eff8c1f28197c552e57d1fefdc55edddb263"
     }
   },
   "coins": {
@@ -397,10 +406,15 @@
       "module": "0xef8b56a5c4b9fd814693e223fdbc22522f75af02a5b3d6c133c8e2d39406f945::wld::WLD",
       "metadata": "0xbd7e4948fec7a8fc275cbcbcd2e5208dd952d2e7b24344d43e51e9834c72ece5"
     },
-    "afsui": {
+    "hasui": {
       "decimals": 9,
-      "module": "0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI",
-      "metadata": "0x2f9217f533e51334873a39b8026a4aa6919497b47f49d0986a4f1aec66f8a34d"
+      "module": "0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI",
+      "metadata": "0x2c5f33af93f6511df699aaaa5822d823aac6ed99d4a0de2a4a50b3afa0172e24"
+    },
+    "hippo": {
+      "decimals": 9,
+      "module": "0x8993129d72e733985f7f1a00396cbd055bad6f817fee36576ce483c8bbb8b87b::sudeng::SUDENG",
+      "metadata": "0x2360abc40dc0638c6bfcf11ec2d9bce6f644323d80ef1ddeb6e372c8aa2ef9c5"
     }
   }
 }
