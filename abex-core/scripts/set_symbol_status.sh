@@ -30,14 +30,14 @@ if [ -z "${liquidate_flag}" ]; then
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
-package_v1_1_6=`cat $deployments | jq -r ".abex_core.package_v1_1_6"`
+package_v1_1_7=`cat $deployments | jq -r ".abex_core.package_v1_1_7"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 market=`cat $deployments | jq -r ".abex_core.market"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
 
 # set symbol status
 log=`sui client call --gas-budget ${gas_budget} \
-              --package ${package_v1_1_6} \
+              --package ${package_v1_1_7} \
               --module market \
               --function set_symbol_status \
               --type-args $package::alp::ALP ${coin_module} $package::market::$direction \

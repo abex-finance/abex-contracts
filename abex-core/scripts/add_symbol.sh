@@ -67,7 +67,7 @@ if [ -z "${liq_bonus}" ]; then
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
-package_v1_1_6=`cat $deployments | jq -r ".abex_core.package_v1_1_6"`
+package_v1_1_7=`cat $deployments | jq -r ".abex_core.package_v1_1_7"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 market=`cat $deployments | jq -r ".abex_core.market"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
@@ -76,7 +76,7 @@ pyth_feeder=`cat $deployments | jq -r ".pyth_feeder.feeder.$coin"`
 
 # add new symbol
 add_log=`sui client call --gas-budget $gas_budget \
-              --package ${package_v1_1_6} \
+              --package ${package_v1_1_7} \
               --module market \
               --function add_new_symbol_v1_1 \
               --type-args $package::alp::ALP ${coin_module} $package::market::$direction \
