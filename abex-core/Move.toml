@@ -1,7 +1,7 @@
 [package]
 name = "abex-core"
 version = "1.1.3"
-published-at = "0x840cc977a6583f362bf2eff3534b2abc9e8fb05049d5c185f8a98288242fa52f"
+published-at = "0xda8e1ebbb1789a1958d74d8186b573512741804d5ad8a3517b2337bfbf977ade"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"

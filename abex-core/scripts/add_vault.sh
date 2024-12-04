@@ -15,7 +15,6 @@ if [ -z "$env_name" ]; then
        env_name="mainnet"
 fi
 deployments="../../deployments-$env_name.json"
-config="/root/.sui/sui_config/$env_name-client.yaml"
 
 if [ -z "$weight" ]; then
        weight=100000000000000000
@@ -31,7 +30,7 @@ if [ -z "${param_multiplier}" ]; then
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
-package_v1_1=`cat $deployments | jq -r ".abex_core.package_v1_1"`
+package_v1_1_6=`cat $deployments | jq -r ".abex_core.package_v1_1_6"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 market=`cat $deployments | jq -r ".abex_core.market"`
 coin_module=`cat $deployments | jq -r ".coins.$coin.module"`
@@ -39,9 +38,8 @@ coin_metadata=`cat $deployments | jq -r ".coins.$coin.metadata"`
 pyth_feeder=`cat $deployments | jq -r ".pyth_feeder.feeder.$coin"`
 
 # add new vault
-add_log=`sui client --client.config $config \
-       call --gas-budget $gas_budget \
-              --package ${package_v1_1} \
+add_log=`sui client call --gas-budget $gas_budget \
+              --package ${package_v1_1_6} \
               --module market \
               --function add_new_vault_v1_1 \
               --type-args $package::alp::ALP ${coin_module} \

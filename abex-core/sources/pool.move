@@ -275,6 +275,10 @@ module abex_core::pool {
         symbol.liquidate_enabled = liquidate_enabled;
     }
 
+    public(friend) fun set_vault_weight<C>(vault: &mut Vault<C>, weight: u256) {
+        vault.weight = decimal::from_raw(weight);
+    }
+
     public(friend) fun deposit<C>(
         vault: &mut Vault<C>,
         fee_model: &RebaseFeeModel,

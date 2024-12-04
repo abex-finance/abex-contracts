@@ -1,6 +1,6 @@
 #!/bin/bash
 
-read -p "Import the env name (default: testnet): " env_name
+read -p "Import the env name (default: mainnet): " env_name
 read -p "Import gas budget (default: 1000000000): " gas_budget
 read -p "Import the index coin name: " i_coin
 read -p "Import the symbol direction (default: LONG): " direction
@@ -10,16 +10,16 @@ if [ -z "$gas_budget" ]; then
        gas_budget=1000000000
 fi
 if [ -z "$env_name" ]; then
-       env_name="testnet"
+       env_name="mainnet"
 fi
 deployments="../../deployments-$env_name.json"
-config="/root/.sui/sui_config/$env_name-client.yaml"
 
 if [ -z "$direction" ]; then
        direction="LONG"
 fi
 
 package=`cat $deployments | jq -r ".abex_core.package"`
+package_v1_1_7=`cat $deployments | jq -r ".abex_core.package_v1_1_7"`
 admin_cap=`cat $deployments | jq -r ".abex_core.admin_cap"`
 market=`cat $deployments | jq -r ".abex_core.market"`
 i_coin_module=`cat $deployments | jq -r ".coins.$i_coin.module"`
@@ -27,9 +27,8 @@ i_coin_module=`cat $deployments | jq -r ".coins.$i_coin.module"`
 for c_coin in ${c_coins[*]}; do
        c_coin_module=`cat $deployments | jq -r ".coins.$c_coin.module"`
        # add collateral to symbol
-       add_log=`sui client --client.config $config \
-              call --gas-budget $gas_budget \
-                     --package $package \
+       add_log=`sui client call --gas-budget $gas_budget \
+                     --package $package_v1_1_7 \
                      --module market \
                      --function add_collateral_to_symbol \
                      --type-args $package::alp::ALP ${c_coin_module} ${i_coin_module} $package::market::$direction \
